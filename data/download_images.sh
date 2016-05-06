@@ -1,0 +1,1 @@
+cat urls.txt | awk '{ print $2 }' | xargs wget --no-check-certificate -t 1 --timeout=5 -P ./train/

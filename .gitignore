@@ -1,3 +1,14 @@
+# OSX
+.DS_Store
+
+# Project
+data/output/*.jpg
+data/output/*.png
+data/train/*.jpg
+data/train/*.png
+vgg16/vgg-16_*weights*
+models/results/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
