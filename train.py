@@ -39,7 +39,7 @@ mean = VGG_16_mean(path=meanPath)
 
 print('Loading VGG headless')
 modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
-vgg_headless_model = VGG_16_headless(modelWeights, trainable=False)
+vgg_headless_model = VGG_16_headless_5(modelWeights, trainable=False)
 print(np.array(vgg_headless_model.layers).shape)
 # print(vgg_headless_model.summary())
 
