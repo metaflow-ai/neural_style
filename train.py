@@ -60,8 +60,8 @@ def get_output_shape(input_shape):
 
 input = Input(shape=(3, 256, 256), name='input')
 st1 = st_model(input)
-clip1 = Lambda(lambda x: K.clip(x, 0, 255), output_shape=get_output_shape)(st1)
-l1 = Lambda(lambda x: x - mean, output_shape=get_output_shape)(clip1)
+#clip1 = Lambda(lambda x: K.clip(x, 0, 255), output_shape=get_output_shape)(st1)
+l1 = Lambda(lambda x: x - mean, output_shape=get_output_shape)(st1)
 out_style1, out_style2, out_style3, out_feat3, out_style4, out_style5 = vgg_headless_model(l1)
 full_model = Model(input=[input], output=[out_style1, out_style2, out_style3, out_feat3, out_style4, out_style5])
 # full_model.load_weights()
@@ -109,6 +109,14 @@ full_model.compile(
         euclidian_error,
         grams_frobenius_error,
         grams_frobenius_error,
+    ],
+    loss_weights=[ # Style is as important as feature
+        0.2, 
+        0.2,
+        0.2,
+        1.,
+        0.2,
+        0.0000001
     ]
 )
 
@@ -129,14 +137,14 @@ full_model.fit(
         plabels_style4,
         plabels_style5,
     ],
-    nb_epoch=20, 
+    nb_epoch=250, 
     batch_size=4,
     callbacks=[
-        ModelCheckpoint(
-            dir + "/models/results/full_model_weights.{epoch:02d}-{loss:.2f}.hdf5",
-            monitor='loss',
-            verbose=1
-        ),
+        #ModelCheckpoint(
+        #    dir + "/models/results/full_model_weights.{epoch:02d}-{loss:.2f}.hdf5",
+        #    monitor='loss',
+        #    verbose=1
+        #),
         history
     ]
 )
