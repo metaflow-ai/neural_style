@@ -25,8 +25,8 @@ vgg16Dir = dir + '/vgg16'
 # for 'th' dim_ordering (default): [batch, channels, height, width] 
 ############
 print('Loading training set')
-trainPath = dir + '/data/train'
-X_train = load_images(trainPath, 4)
+# X_train = load_images(dir + '/data/train')
+X_train = load_images(dir + '/data/overfit')
 print("X_train shape:", X_train.shape)
 
 print('Loading Van Gogh')
@@ -46,8 +46,10 @@ print(np.array(vgg_headless_model.layers).shape)
 print('Loading style_transfer')
 stWeights = dir + '/models/st_vangogh_weights.hdf5'
 if os.path.isfile(stWeights): 
+    print("From sratch")
     st_model = style_transfer(stWeights)
 else:
+    print("From weights")
     st_model = style_transfer()
 print(np.array(st_model.layers).shape)
 # # print(st_model.summary())
@@ -127,7 +129,7 @@ full_model.fit(
         plabels_style4,
         plabels_style5,
     ],
-    nb_epoch=2, 
+    nb_epoch=20, 
     batch_size=4,
     callbacks=[
         ModelCheckpoint(

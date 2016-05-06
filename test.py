@@ -2,18 +2,19 @@ import numpy as np
 import os, time
 import png
 
+from models.style_transfer import style_transfer
 from utils.imutils import load_images
-from models.style_tranfer import style_tranfer
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
 print('Loading test set')
-X_test = load_images(dir + '/data', 4)
+# X_test = load_images(dir + '/data/test')
+X_test = load_images(dir + '/data/overfit')
 print(X_test.shape)
 
-print('Loading style_tranfer')
+print('Loading style_transfer')
 stWeights = dir + '/models/st_vangogh_weights.hdf5'
-st_model = style_tranfer(stWeights)
+st_model = style_transfer(stWeights)
 
 print('Compiling st_model')
 st_model.compile(loss='mean_squared_error', optimizer='sgd')
@@ -40,6 +41,7 @@ pngWriter = png.Writer(column_count, row_count,
 outPath = testPath = dir + '/data/output'
 i = 0
 for im in results:
+    print(im[0])
     fullOutPath = testPath + '/' + str(i) + ".png"
     im = np.clip(im.transpose(1, 2, 0).astype(int), 0, 255)
     f = open(fullOutPath, 'wb')
