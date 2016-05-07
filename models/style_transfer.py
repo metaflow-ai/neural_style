@@ -82,20 +82,18 @@ def style_transfer(weights_path=None):
     # This has to be checked, it might not be what we want
     c71 = Convolution2D(64, 1, 1, 
         init='uniform', subsample=(1, 1), border_mode='same', activation='linear')(out6)
-    bn71 = BatchNormalization(axis=1)(c71)
+    u71 = UpSampling2D(size=(2, 2))(c71)
+    bn71 = BatchNormalization(axis=1)(u71)
     a71 = Activation('relu')(bn71)
-    u71 = UpSampling2D(size=(2, 2))(a71)
-
+    
     c81 = Convolution2D(32, 1, 1, 
-        init='uniform', subsample=(1, 1), border_mode='same', activation='linear')(u71)
-    bn81 = BatchNormalization(axis=1)(c81)
-    a81 = Activation('relu')(bn81)
-    u81 = UpSampling2D(size=(2, 2))(a81)    
+        init='uniform', subsample=(1, 1), border_mode='same', activation='linear')(a71)
+    u81 = UpSampling2D(size=(2, 2))(c81)
+    bn81 = BatchNormalization(axis=1)(u81)
+    a81 = Activation('relu')(bn81)    
 
     c91 = Convolution2D(3, 9, 9, 
-        init='uniform', subsample=(1, 1), border_mode='same', activation='relu')(u81)
-    #bn91 = BatchNormalization(axis=1)(c91)
-    #a91 = Activation('relu')(bn91)
+        init='uniform', subsample=(1, 1), border_mode='same', activation='relu')(a81)
     
     model = Model(input=[input], output=[c91])
 

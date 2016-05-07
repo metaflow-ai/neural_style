@@ -8,6 +8,7 @@ data/train/*.jpg
 data/train/*.png
 vgg16/vgg-16_*weights*
 models/results/*
+models/*.hdf5
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

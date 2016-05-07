@@ -20,17 +20,19 @@ from utils.imutils import load_images, load_image
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg16Dir = dir + '/vgg16'
+resultsDir = dir + '/models/results'
+dataDir = dir + '/data'
 
 ############
 # for 'th' dim_ordering (default): [batch, channels, height, width] 
 ############
 print('Loading training set')
-# X_train = load_images(dir + '/data/train')
-X_train = load_images(dir + '/data/overfit')
+# X_train = load_images(dataDir + '/train')
+X_train = load_images(dataDir + '/overfit')
 print("X_train shape:", X_train.shape)
 
 print('Loading Van Gogh')
-vanGoghPath = dir + '/data/paintings/vangogh.jpg'
+vanGoghPath = dataDir + '/paintings/vangogh.jpg'
 X_train_paint = np.array([load_image(vanGoghPath)])
 
 print('Loading mean')
@@ -46,13 +48,13 @@ print(np.array(vgg_headless_model.layers).shape)
 print('Loading style_transfer')
 stWeights = dir + '/models/st_vangogh_weights.hdf5'
 if os.path.isfile(stWeights): 
-    print("From sratch")
+    print("From weights")
     st_model = style_transfer(stWeights)
 else:
-    print("From weights")
+    print("From scratch")
     st_model = style_transfer()
 print(np.array(st_model.layers).shape)
-# # print(st_model.summary())
+# print(st_model.summary())
 
 print('Building full model')
 def get_output_shape(input_shape):
@@ -60,88 +62,105 @@ def get_output_shape(input_shape):
 
 input = Input(shape=(3, 256, 256), name='input')
 st1 = st_model(input)
-#clip1 = Lambda(lambda x: K.clip(x, 0, 255), output_shape=get_output_shape)(st1)
-l1 = Lambda(lambda x: x - mean, output_shape=get_output_shape)(st1)
-out_style1, out_style2, out_style3, out_feat3, out_style4, out_style5 = vgg_headless_model(l1)
-full_model = Model(input=[input], output=[out_style1, out_style2, out_style3, out_feat3, out_style4, out_style5])
+clip1 = Lambda(lambda x: K.clip(x, 0, 255), output_shape=get_output_shape)(st1)
+l1 = Lambda(lambda x: x - mean, output_shape=get_output_shape)(clip1)
+c11, c12, c21, c22, c31, c32, c33, c41, c42, c43, c51, c52, c53, c33_2 = vgg_headless_model(l1)
+full_model = Model(input=[input], output=[
+    c11, c12, 
+    c21, c22, 
+    c31, c32, c33, 
+    c41, c42, c43,
+    c51, c52, c53,
+    c33_2]
+)
 # full_model.load_weights()
 
-# print('Ploting models')
-# plot(st_model, show_shapes=True)
-# plot(full_model, show_shapes=True)
-# plot(full_model, show_shapes=True)
-
-print('Compiling vgg_headless_model')
-adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-
-vgg_headless_model.compile(
-    optimizer=adam,
-    loss={
-        'out_style1': grams_frobenius_error,
-        'out_style2': grams_frobenius_error,
-        'out_style3': grams_frobenius_error,
-        'out_feat3': euclidian_error,
-        'out_style4': grams_frobenius_error,
-        'out_style5': grams_frobenius_error,
-    }
-)
+print('Ploting models')
+plot(st_model, to_file=dir + '/models/st_model.png', show_shapes=True)
+plot(vgg_headless_model, to_file=dir + '/models/vgg_headless_model.png', show_shapes=True)
+plot(full_model, to_file=dir + '/models/full_model.png', show_shapes=True)
 
 print('Creating labels')
-plabels_style1, plabels_style2, plabels_style3, plabels_feat3, plabels_style4, plabels_style5 = vgg_headless_model.predict(X_train_paint)
-plabels_style1 = np.repeat(plabels_style1, X_train.shape[0], axis=0)
-plabels_style2 = np.repeat(plabels_style2, X_train.shape[0], axis=0)
-plabels_style3 = np.repeat(plabels_style3, X_train.shape[0], axis=0)
-plabels_feat3 = np.repeat(plabels_feat3, X_train.shape[0], axis=0)
-plabels_style4 = np.repeat(plabels_style4, X_train.shape[0], axis=0)
-plabels_style5 = np.repeat(plabels_style5, X_train.shape[0], axis=0)
-print(plabels_style1.shape, plabels_style2.shape, plabels_style3.shape, plabels_feat3.shape, plabels_style4.shape, plabels_style5.shape)
+vgg_headless_model.compile(loss='mean_squared_error', optimizer='sgd')
+labels = []
+(c11_plabels, c12_plabels, 
+    c21_plabels, c22_plabels, 
+    c31_plabels, c32_plabels, c33_plabels, 
+    c41_plabels, c42_plabels, c43_plabels, 
+    c51_plabels, c52_plabels, c53_plabels, 
+    c33_2_plabels) = vgg_headless_model.predict(X_train_paint)
+for label in [c11_plabels, c12_plabels, 
+        c21_plabels, c22_plabels, 
+        c31_plabels, c32_plabels, c33_plabels, 
+        c41_plabels, c42_plabels, c43_plabels, 
+        c51_plabels, c52_plabels, c53_plabels]:
+    labels.append(np.repeat(label, X_train.shape[0], axis=0))
 
-ilabels_style1, ilabels_style2, ilabels_style3, ilabels_feat3, ilabels_style4, ilabels_style5 = vgg_headless_model.predict(X_train)
-print(ilabels_style1.shape, ilabels_style2.shape, ilabels_style3.shape, ilabels_feat3.shape, ilabels_style4.shape, ilabels_style5.shape)
+(c11_ilabels, c12_ilabels, 
+    c21_ilabels, c22_ilabels, 
+    c31_ilabels, c32_ilabels, c33_ilabels, 
+    c41_ilabels, c42_ilabels, c43_ilabels, 
+    c51_ilabels, c52_ilabels, c53_ilabels, 
+    c33_2_ilabels) = vgg_headless_model.predict(X_train)
+labels.append(c33_2_ilabels)
+for label in labels:
+    print(label.shape)
 
 print('Compiling full_model')
+adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+
 full_model.compile(
     optimizer=adam,
     loss=[
-        grams_frobenius_error,
-        grams_frobenius_error,
-        grams_frobenius_error,
-        euclidian_error,
-        grams_frobenius_error,
-        grams_frobenius_error,
+        grams_frobenius_error, # conv_1_1
+        grams_frobenius_error, # conv_1_2
+        grams_frobenius_error, # conv_2_1
+        grams_frobenius_error, # conv_2_2
+        grams_frobenius_error, # conv_3_1
+        grams_frobenius_error, # conv_3_2
+        grams_frobenius_error, # conv_3_3
+        grams_frobenius_error, # conv_4_1
+        grams_frobenius_error, # conv_4_2
+        grams_frobenius_error, # conv_4_3
+        grams_frobenius_error, # conv_5_1
+        grams_frobenius_error, # conv_5_2
+        grams_frobenius_error, # conv_5_3
+        euclidian_error # conv_3_3
     ],
     loss_weights=[ # Style is as important as feature
-        0.2, 
-        0.2,
-        0.2,
-        1.,
-        0.2,
-        0.0000001
+        0, # conv_1_1
+        0.2, # conv_1_2
+        0, # conv_2_1
+        0.2, # conv_2_2
+        0, # conv_3_1
+        0, # conv_3_2
+        0.2, # conv_3_3
+        0, # conv_4_1
+        0, # conv_4_2
+        0.2, # conv_4_3
+        0, # conv_5_1
+        0, # conv_5_2
+        0.2, # conv_5_3
+        1, # conv_3_3
     ]
 )
 
-print('Training full_model')
-lossFile = dir + '/models/results/full_model_losses.txt'
-history = LossHistory()
-fullpath_loss = dir + '/models/results/full_model_losses.txt'
-# with open('data.txt') as infile:
-#     history.losses = json.load(infile)
 
+history = LossHistory()
+fullpath_loss = resultsDir + '/full_model_losses.json'
+if os.path.isfile(fullpath_loss): 
+    print('Loading history')
+    history.losses = json.load(fullpath_loss)
+
+print('Training full_model')
 full_model.fit(
     X_train,
-    [
-        plabels_style1,
-        plabels_style2,
-        plabels_style3,
-        ilabels_feat3,
-        plabels_style4,
-        plabels_style5,
-    ],
-    nb_epoch=250, 
+    labels,
+    nb_epoch=1, 
     batch_size=4,
     callbacks=[
         #ModelCheckpoint(
-        #    dir + "/models/results/full_model_weights.{epoch:02d}-{loss:.2f}.hdf5",
+        #    resultsDir + '/full_model_weights.{epoch:02d}-{loss:.2f}.hdf5",
         #    monitor='loss',
         #    verbose=1
         #),
@@ -158,4 +177,4 @@ with open(fullpath_loss, 'w') as outfile:
 plt.plot(history.losses)
 plt.xlabel('Iteration number')
 plt.ylabel('Loss value')
-plt.savefig(dir + '/models/results/loss.png')
+plt.savefig(resultsDir + '/loss.png')

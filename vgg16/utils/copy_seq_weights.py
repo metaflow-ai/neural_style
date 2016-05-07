@@ -21,4 +21,4 @@ def copySeqWeights(model, weightsFullPath, outputFilename, offset=1, limit=-1):
 
     f.close()
 
-    model.save_weights(outputFilename)
+    model.save_weights(outputFilename, overwrite=True)

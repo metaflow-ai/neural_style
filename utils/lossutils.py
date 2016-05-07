@@ -10,13 +10,21 @@ class LossHistory(Callback):
 
 
 def grams_frobenius_error(y_true, y_pred):
-    eps = 1e-8
-    y_true_T = K.permute_dimensions(y_true, (0, 2, 1))
-    y_pred_T = K.permute_dimensions(y_pred, (0, 2, 1))
-    y_true_grams = K.dot(y_true, y_true_T) / (2 * y_true.shape[1] * y_true.shape[2])
-    y_pred_grams = K.dot(y_pred, y_pred_T) / (2 * y_pred.shape[1] * y_pred.shape[2])
-    return K.sum(K.square(y_true_grams - y_pred_grams))
+    samples, c, h, w = y_true.shape
+
+    y_true_reshaped = K.reshape(y_true, (samples, c, h * w))
+    y_pred_reshaped = K.reshape(y_pred, (samples, c, h * w))
+    y_true_T = K.permute_dimensions(y_true_reshaped, (0, 2, 1))
+    y_pred_T = K.permute_dimensions(y_pred_reshaped, (0, 2, 1))
+    y_true_grams = K.dot(y_true_reshaped, y_true_T) / (2 * c * h * w)
+    y_pred_grams = K.dot(y_pred_reshaped, y_pred_T) / (2 * c * h * w)
+    loss = K.sum(K.square(y_true_grams - y_pred_grams))
+
+    return loss
 
 def euclidian_error(y_true, y_pred):
-    eps = 1e-8
-    return K.sum(K.square(y_pred - y_true)) / (2 * y_true.shape[1] * y_true.shape[2] * y_true.shape[3])
+    samples, c, h, w = y_true.shape
+
+    loss = K.sum(K.square(y_pred - y_true)) / (2 * c * h * w)
+
+    return loss

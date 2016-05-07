@@ -20,3 +20,6 @@ def load_image(fullpath, limit=-1):
     im = misc.imresize(im, (256,256)).transpose(2, 0, 1).astype(np.float32)
 
     return np.array(im)
+
+def load_data(dataPath):
+    return ''
