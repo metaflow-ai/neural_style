@@ -88,7 +88,7 @@ labels = []
     c31_plabels, c32_plabels, c33_plabels, 
     c41_plabels, c42_plabels, c43_plabels, 
     c51_plabels, c52_plabels, c53_plabels, 
-    c33_2_plabels) = vgg_headless_model.predict(X_train_paint)
+    c33_2_plabels) = vgg_headless_model.predict(X_train_paint - mean)
 for label in [c11_plabels, c12_plabels, 
         c21_plabels, c22_plabels, 
         c31_plabels, c32_plabels, c33_plabels, 
@@ -101,7 +101,7 @@ for label in [c11_plabels, c12_plabels,
     c31_ilabels, c32_ilabels, c33_ilabels, 
     c41_ilabels, c42_ilabels, c43_ilabels, 
     c51_ilabels, c52_ilabels, c53_ilabels, 
-    c33_2_ilabels) = vgg_headless_model.predict(X_train)
+    c33_2_ilabels) = vgg_headless_model.predict(X_train - mean)
 labels.append(c33_2_ilabels)
 for label in labels:
     print(label.shape)
