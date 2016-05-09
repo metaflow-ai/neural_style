@@ -36,6 +36,9 @@ model = VGG_16_headless_5(modelWeights, trainable=False)
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 input_img = layer_dict['input'].input
 
+print('Building white noise images')
+input_data = create_noise_tensor(3, 256, 256)
+
 layers_names = [l for l in layer_dict if len(re.findall('conv_', l))]
 current_iter = 1
 
@@ -70,11 +73,7 @@ for idx, loss_feat in enumerate(losses_feat):
     for alpha in [0.2, 0.02, 0.002, 0.0002]:
         print("alpha:", alpha)
 
-        print('Building white noise images')
-        input_data = create_noise_tensor(3, 256, 256)
-
         print('Compiling model')
-        
         loss = alpha * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) + loss_feat
 
         grads_style = K.gradients(loss, input_img)[0]
@@ -82,10 +81,11 @@ for idx, loss_feat in enumerate(losses_feat):
         iterate = K.function([input_img], [loss, grads_style])
 
         config = {'learning_rate': 1e-00}
-        best_input_data = train_on_input(input_data - mean, iterate, adam, config)
+        best_input_data = train_on_input(input_data - mean, iterate, adam, config, 5)
+        best_input_data += mean
 
         prefix = str(current_iter).zfill(4)
         fullOutPath = resultsDir + '/' + prefix + '_gatys_paper_feat' + layer_name_feat + '_alpha' + str(alpha) + '.png'
-        deprocess_image(best_input_data, fullOutPath)
+        deprocess_image(best_input_data[0], fullOutPath)
 
         current_iter += 1

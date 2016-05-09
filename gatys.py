@@ -36,6 +36,9 @@ model = VGG_16_headless_5(modelWeights, trainable=False)
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 input_img = layer_dict['input'].input
 
+print('Building white noise images')
+input_data = create_noise_tensor(3, 256, 256)
+
 layers_names = [l for l in layer_dict if len(re.findall('conv_', l))]
 current_iter = 1
 for layer_name_feat in reversed(layers_names):
@@ -56,21 +59,19 @@ for layer_name_feat in reversed(layers_names):
         for alpha in [0.1, 0.01, 0.001]:
             print("alpha:", alpha)
 
-            print('Building white noise images')
-            input_data = create_noise_tensor(3, 256, 256)
-
             print('Compiling model')
             loss = alpha * loss_style + loss_feat
-            grads_style = K.gradients(loss, input_img)[0]
-            # grads_style = K.gradients(loss_style, input_img)[0]
-            grads_style /= (K.sqrt(K.mean(K.square(grads_style))) + 1e-5)
-            iterate = K.function([input_img], [loss, grads_style])
+            grads = K.gradients(loss, input_img)[0]
+            # grads = K.gradients(loss_style, input_img)[0]
+            grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-5)
+            iterate = K.function([input_img], [loss, grads])
 
             config = {'learning_rate': 1e-00}
             best_input_data = train_on_input(input_data - mean, iterate, adam, config)
+            best_input_data += mean
 
             prefix = str(current_iter).zfill(4)
             fullOutPath = resultsDir + '/' + prefix + '_gatys_st' + layer_name_style + '_feat' + layer_name_feat + "_alpha" + str(alpha) + ".png"
-            deprocess_image(best_input_data, fullOutPath)
+            deprocess_image(best_input_data[0], fullOutPath)
 
             current_iter += 1

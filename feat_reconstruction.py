@@ -36,15 +36,13 @@ model = VGG_16_headless_5(modelWeights, trainable=False)
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 input_img = layer_dict['input'].input
 
-# http://blog.keras.io/how-convolutional-neural-networks-see-the-world.html
+print('Building white noise images')
+input_style_data = create_noise_tensor(3, 256, 256)
+input_feat_data = create_noise_tensor(3, 256, 256)
 
 layers_names = reversed([l for l in layer_dict if len(re.findall('conv_', l))])
-max_iter = 1000
+current_iter = 1
 for layer_name in layers_names:
-    print('Building white noise images')
-    input_style_data = create_noise_tensor(3, 256, 256)
-    input_feat_data = create_noise_tensor(3, 256, 256)
-
     print('Creating labels for ' + layer_name)
     out = layer_dict[layer_name].output
     predict = K.function([input_img], [out])
@@ -64,15 +62,21 @@ for layer_name in layers_names:
     grads_feat /= (K.sqrt(K.mean(K.square(grads_feat))) + 1e-5)
     iterate_feat = K.function([input_img], [loss_feat, grads_feat])
 
+    prefix = str(current_iter).zfill(4)
+
     print('Training the image for style')
     config = {'learning_rate': 1e-00}
     best_input_style_data = train_on_input(input_style_data - mean, iterate_style, adam, config)
-    fullOutPath = resultsDir + '/style_' + layer_name + ".png"
-    deprocess_image(best_input_style_data, fullOutPath)
+    best_input_style_data += mean
+    fullOutPath = resultsDir + '/' + prefix + '_style_' + layer_name + ".png"
+    deprocess_image(best_input_style_data[0], fullOutPath)
 
     print('Training the image for feature')
     config = {'learning_rate': 1e-00}
     best_input_feat_data = train_on_input(input_feat_data - mean, iterate_feat, adam, config)
-    fullOutPath = resultsDir + '/feat_' + layer_name + ".png"
-    deprocess_image(best_input_feat_data, fullOutPath)
+    best_input_feat_data += mean
+    fullOutPath = resultsDir + '/' + prefix + '_feat_' + layer_name + ".png"
+    deprocess_image(best_input_feat_data[0], fullOutPath)
+
+    current_iter += 1
 
