@@ -20,14 +20,12 @@ def grams_frobenius_error(y_true, y_pred):
     y_pred_T = K.permute_dimensions(y_pred_reshaped, (0, 2, 1))
     y_true_grams = K.dot(y_true_reshaped, y_true_T) / (2 * c * h * w)
     y_pred_grams = K.dot(y_pred_reshaped, y_pred_T) / (2 * c * h * w)
-    loss = K.sum(K.square(y_true_grams - y_pred_grams))
+    loss = K.sum(K.square(y_pred_grams - y_true_grams))
 
     return loss
 
 def euclidian_error(y_true, y_pred):
-    samples, c, h, w = y_true.shape
-
-    loss = K.sum(K.square(y_pred - y_true)) / (2 * c * h * w)
+    loss = K.sum(K.square(y_pred - y_true)) / 2
 
     return loss
 

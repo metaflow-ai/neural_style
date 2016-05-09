@@ -34,7 +34,7 @@ print('Loading VGG headless 5')
 modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
 model = VGG_16_headless_5(modelWeights, trainable=False)
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
-input_img = layer_dict['input'].input
+input_layer = layer_dict['input'].input
 
 print('Building white noise images')
 input_data = create_noise_tensor(3, 256, 256)
@@ -49,7 +49,7 @@ out2_2 = layer_dict['conv_2_2'].output
 out3_3 = layer_dict['conv_3_3'].output
 out4_3 = layer_dict['conv_4_3'].output
 out5_3 = layer_dict['conv_5_3'].output
-predict = K.function([input_img], [out1_2, out2_2, out3_3, out4_3, out5_3])
+predict = K.function([input_layer], [out1_2, out2_2, out3_3, out4_3, out5_3])
 
 out_style_labels = predict([X_train_paint - mean])
 out_feat_labels = predict([X_train - mean])
@@ -70,18 +70,18 @@ losses_feat.append(euclidian_error(out_feat_labels[4], out5_3))
 for idx, loss_feat in enumerate(losses_feat):
     layer_name_feat = layers[idx]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
-    for alpha in [0.2, 0.02, 0.002, 0.0002]:
+    for alpha in [1e04, 1e02, 1., 1e-02, 1e-04]:
         print("alpha:", alpha)
 
         print('Compiling model')
         loss = alpha * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) + loss_feat
 
-        grads_style = K.gradients(loss, input_img)[0]
-        grads_style /= (K.sqrt(K.mean(K.square(grads_style))) + 1e-5)
-        iterate = K.function([input_img], [loss, grads_style])
+        grads = K.gradients(loss, input_layer)[0]
+        grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-5)
+        iterate = K.function([input_layer], [loss, grads])
 
         config = {'learning_rate': 1e-00}
-        best_input_data = train_on_input(input_data - mean, iterate, adam, config, 2000)
+        best_input_data = train_on_input(input_data - mean, iterate, adam, config, 2500)
         best_input_data += mean
 
         prefix = str(current_iter).zfill(4)
