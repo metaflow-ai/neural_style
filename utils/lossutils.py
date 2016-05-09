@@ -49,7 +49,7 @@ def train_on_input(input_data, iteratee, optimizer, config, max_iter=1000):
             best_input_data = np.copy(input_data[0])
             wait = 0
         else:
-            if wait >= 50:
+            if wait >= 30:
                 break
             wait +=1
 
