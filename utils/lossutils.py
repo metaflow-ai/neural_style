@@ -1,3 +1,5 @@
+import numpy as np 
+
 from keras.callbacks import Callback
 from keras import backend as K
 
@@ -28,3 +30,28 @@ def euclidian_error(y_true, y_pred):
     loss = K.sum(K.square(y_pred - y_true)) / (2 * c * h * w)
 
     return loss
+
+def train_on_input(input_data, iteratee, optimizer, config, max_iter=1000):
+    print('Training input')
+    loss_val = 1e15
+    wait = 0
+    best_loss = 1e15
+    best_input_data = None
+    for i in range(max_iter):
+        loss_val, grads_val = iteratee([input_data])
+        input_data, config = optimizer(input_data, grads_val, config)
+
+        if i % 10 == 0:
+            print(str(i) + ':', loss_val)
+
+        if loss_val < best_loss:
+            best_loss = loss_val
+            best_input_data = np.copy(input_data[0])
+            wait = 0
+        else:
+            if wait >= 50:
+                break
+            wait +=1
+
+    print("final loss:", best_loss)
+    return best_input_data
