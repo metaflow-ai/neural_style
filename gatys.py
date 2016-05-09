@@ -67,7 +67,7 @@ for layer_name_feat in reversed(layers_names):
             iterate = K.function([input_img], [loss, grads])
 
             config = {'learning_rate': 1e-00}
-            best_input_data = train_on_input(input_data - mean, iterate, adam, config)
+            best_input_data = train_on_input(input_data - mean, iterate, adam, config, 2500)
             best_input_data += mean
 
             prefix = str(current_iter).zfill(4)

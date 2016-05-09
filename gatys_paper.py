@@ -81,7 +81,7 @@ for idx, loss_feat in enumerate(losses_feat):
         iterate = K.function([input_img], [loss, grads_style])
 
         config = {'learning_rate': 1e-00}
-        best_input_data = train_on_input(input_data - mean, iterate, adam, config, 5)
+        best_input_data = train_on_input(input_data - mean, iterate, adam, config, 2000)
         best_input_data += mean
 
         prefix = str(current_iter).zfill(4)
