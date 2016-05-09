@@ -14,27 +14,27 @@ def style_transfer(weights_path=None):
 
     # Downsampling
     c11 = Convolution2D(32, 9, 9, 
-        init='uniform', subsample=(1, 1), border_mode='same', activation='linear')(input)
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
     bn11 = BatchNormalization(axis=1)(c11)
     a11 = Activation('relu')(bn11)
 
     c12 = Convolution2D(64, 3, 3, 
-        init='uniform', subsample=(2, 2),  border_mode='same', activation='linear')(a11)
+        init='he_normal', subsample=(2, 2),  border_mode='same', activation='linear')(a11)
     bn12 = BatchNormalization(axis=1)(c12)
     a12 = Activation('relu')(bn12)
 
     c13 = Convolution2D(128, 3, 3, 
-        init='uniform', subsample=(2, 2), border_mode='same', activation='linear')(a12)
+        init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(a12)
     bn13 = BatchNormalization(axis=1)(c13)
     a13 = Activation('relu')(bn13)
 
 
     c21 = Convolution2D(128, 3, 3, 
-        init='uniform', subsample=(1, 1), border_mode='same', activation='linear')(a13)
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a13)
     bn21 = BatchNormalization(axis=1)(c21)
     a21 = Activation('relu')(bn21)
     c22 = Convolution2D(128, 3, 3, 
-        init='uniform', subsample=(1, 1), border_mode='same', activation='linear')(a21)
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a21)
     bn22 = BatchNormalization(axis=1)(c22)
     # a22 = Activation('relu')(bn22)
     out2 = merge([a13, bn22], mode='sum')
@@ -81,19 +81,19 @@ def style_transfer(weights_path=None):
 
     # This has to be checked, it might not be what we want
     c71 = Convolution2D(64, 1, 1, 
-        init='uniform', subsample=(1, 1), border_mode='same', activation='linear')(out6)
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out6)
     u71 = UpSampling2D(size=(2, 2))(c71)
     bn71 = BatchNormalization(axis=1)(u71)
     a71 = Activation('relu')(bn71)
     
     c81 = Convolution2D(32, 1, 1, 
-        init='uniform', subsample=(1, 1), border_mode='same', activation='linear')(a71)
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a71)
     u81 = UpSampling2D(size=(2, 2))(c81)
     bn81 = BatchNormalization(axis=1)(u81)
     a81 = Activation('relu')(bn81)    
 
     c91 = Convolution2D(3, 9, 9, 
-        init='uniform', subsample=(1, 1), border_mode='same', activation='relu')(a81)
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='relu')(a81)
     
     model = Model(input=[input], output=[c91])
 

@@ -1,6 +1,7 @@
 import numpy as np
 
 import os, re
+import h5py
 from scipy import misc, ndimage as ndi
 from scipy.misc import imsave
 
@@ -30,12 +31,9 @@ def create_noise_tensor(channels, width, height):
     return np.random.rand(1, channels, width, height) * 20 + 128.
 
 def deprocess_image(im, fullOutPath):
-    im -= im.mean()
-    im /= (im.std() + 1e-5)
-    im *= 0.1
-
-    im += 0.5
-    im = np.clip(im, 0, 1)
+    im = np.copy(im)
+    im -= im.min() # [0, +Infinity]
+    im /= im.max() # [0, 1]
 
     # convert to RGB array
     im *= 255
@@ -43,3 +41,17 @@ def deprocess_image(im, fullOutPath):
     im = np.clip(im, 0, 255).astype('uint8')
 
     imsave(fullOutPath, im)
+
+def dump_as_hdf5(data, fullpath):
+    with h5py.File(fullpath, 'w') as hf:
+        hf.create_dataset('dataset_1', data=data)
+
+
+# dir = os.path.dirname(os.path.realpath(__file__))
+# resultsDir = dir + '/../models/results/vgg16'
+# layer_name = 'conv_1_1'
+# with h5py.File(resultsDir + '/feat_' + layer_name + '.hdf5','r') as hf:
+#     print('List of arrays in this file: \n', hf.keys())
+#     data = hf.get('dataset_1')
+#     fullOutPath = resultsDir + '/feat_' + layer_name + ".png"
+#     deprocess_image(data, fullOutPath)

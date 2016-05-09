@@ -1,6 +1,6 @@
-import os
+import os, unittest
+
 from utils.imutils import *
-import unittest
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
