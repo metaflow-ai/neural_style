@@ -51,19 +51,17 @@ for layer_name in layers_names:
 
     print('Compiling VGG headless 1 for ' + layer_name + ' style + feat reconstruction')
     for alpha in [1., 0.1, 0.01]:
-        for beta in [1., 0.1, 0.01]:
-            print("alpha and beta:", alpha, beta)
-            if alpha != 1. and alpha == beta:
-                print("Skipping")
-                continue
-            loss_style = grams_frobenius_error(out_plabels[0], out)
-            loss_feat = euclidian_error(out_ilabels[0], out)
-            loss = alpha * loss_style + beta * loss_feat
-            grads_style = K.gradients(loss, input_img)[0]
-            grads_style /= (K.sqrt(K.mean(K.square(grads_style))) + 1e-5)
-            iterate = K.function([input_img], [loss_style, grads_style])
+        print("alpha:", alpha)
+        print('Compiling model')
+        loss_style = grams_frobenius_error(out_plabels[0], out)
+        loss_feat = euclidian_error(out_ilabels[0], out)
+        loss = alpha * loss_style + loss_feat
+        grads_style = K.gradients(loss, input_img)[0]
+        # grads_style = K.gradients(loss_style, input_img)[0]
+        grads_style /= (K.sqrt(K.mean(K.square(grads_style))) + 1e-5)
+        iterate = K.function([input_img], [loss, grads_style])
 
-            config = {'learning_rate': 1e-00}
-            best_input_data = train_on_input(input_data - mean, iterate, adam, config)
-            fullOutPath = resultsDir + '/gatys_' + layer_name + "_a" + str(alpha) + "_b" + str(beta) + ".png"
-            deprocess_image(best_input_data, fullOutPath)
+        config = {'learning_rate': 1e-00}
+        best_input_data = train_on_input(input_data - mean, iterate, adam, config)
+        fullOutPath = resultsDir + '/gatys_' + layer_name + "_a" + str(alpha) + ".png"
+        deprocess_image(best_input_data, fullOutPath)
