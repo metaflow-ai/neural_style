@@ -44,23 +44,16 @@ def squared_nornalized_euclidian_error(y_true, y_pred):
 def total_variation_error(y, beta=2.):
     samples, c, h, w = y.shape
 
-    y_shifted_up = np.zeros((samples, c, h+1, w))
-    y_shifted_up[:, :, :-1, :] = y
-    y_shifted_up = scipy.delete(y_shifted_up, 0, 2)
-
-    y_shifted_left = np.zeros((samples, c, h, w+1))
-    y_shifted_left[:, :, :, :-1] = y
-    y_shifted_left = scipy.delete(y_shifted_left, 0, 3)
-
-    out = K.pow(K.square(y_shifted_up - y) + K.square(y_shifted_left - y), beta / 2.)
-    loss = K.sum(out[:, :, :-1, :-1])
+    a = K.square(y[:, :, 1:, :-1] - y[:, :, :-1, :-1])
+    b = K.square(y[:, :, :-1, 1:] - y[:, :, :-1, :-1])
+    loss = K.sum(K.pow(a + b, beta / 2.))
 
     return loss
 
 ##########
 # Training
 ##########
-def train_on_input(input_data, iteratee, optimizer, config, max_iter=1000):
+def train_on_input(input_data, iteratee, optimizer, config, max_iter=2000):
     print('Training input')
     loss_val = 1e15
     wait = 0
@@ -78,7 +71,7 @@ def train_on_input(input_data, iteratee, optimizer, config, max_iter=1000):
             best_input_data = np.copy(input_data)
             wait = 0
         else:
-            if wait >= 100:
+            if wait >= 100 and i > max_iter / 2:
                 break
             wait +=1
 

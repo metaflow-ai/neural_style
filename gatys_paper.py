@@ -67,14 +67,14 @@ losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[2], out3_3
 losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[3], out4_3))
 losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[4], out5_3))
 
-reg_TV = total_variation_error(input_data)
+reg_TV = total_variation_error(input_layer)
 
 for idx, loss_feat in enumerate(losses_feat):
     layer_name_feat = layers[idx]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
     for alpha in [1., 1e-02, 1e-04]:
         for beta in [1.]:
-            for gamma in [1, 1e-04, 0]:
+            for gamma in [1, 1e-02, 1e-04]:
                 if alpha == beta and alpha != 1:
                     continue
                 print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -85,11 +85,11 @@ for idx, loss_feat in enumerate(losses_feat):
                     + gamma * reg_TV
 
                 grads = K.gradients(loss, input_layer)[0]
-                grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-5)
+                grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
                 iterate = K.function([input_layer], [loss, grads])
 
-                config = {'learning_rate': 1e-00}
-                best_input_data = train_on_input(input_data - mean, iterate, adam, config, 10)
+                config = {'learning_rate': 1e-01}
+                best_input_data = train_on_input(input_data - mean, iterate, adam, config)
                 best_input_data += mean
 
                 prefix = str(current_iter).zfill(4)

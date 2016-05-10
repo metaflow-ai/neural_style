@@ -43,8 +43,8 @@ print('Building white noise images')
 input_data = create_noise_tensor(3, 256, 256)
 
 current_iter = 1
-for layer_name_feat in layers_names:
-    for layer_name_style in layers_names:
+for idx_feat, layer_name_feat in enumerate(layers_names):
+    for idx_style, layer_name_style in enumerate(layers_names):
         print('Creating labels for feat ' + layer_name_feat + ' and style ' + layer_name_style)
         out_style = layer_dict[layer_name_style].output
         predict_style = K.function([input_layer], [out_style])
@@ -56,15 +56,15 @@ for layer_name_feat in layers_names:
 
         loss_style = grams_frobenius_error(out_style_labels[0], out_style)
         loss_feat = squared_nornalized_euclidian_error(out_feat_labels[0], out_feat)
-        reg_TV = total_variation_error(input_data)
+        reg_TV = total_variation_error(input_layer)
 
         print('Compiling VGG headless 5 for feat ' + layer_name_feat + ' and style ' + layer_name_style)
         # At the same layer
         # if alpha/beta >= 1e02 we only see style
         # if alpha/beta <= 1e-04 we only see the picture
-        for alpha in [1., 1e-02, 1e-04]:
+        for alpha in [1e02, 1., 1e-02, 1e-04]:
             for beta in [1.]:
-                for gamma in [1, 1e-04, 0]:
+                for gamma in [1, 1e-02, 1e-04]:
                     if alpha == beta and alpha != 1:
                         continue
                     print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -72,14 +72,14 @@ for layer_name_feat in layers_names:
                     print('Compiling model')
                     loss = alpha * loss_style + beta * loss_feat + gamma * reg_TV
                     grads = K.gradients(loss, input_layer)[0]
-                    grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-5)
+                    grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
                     iterate = K.function([input_layer], [loss, grads])
 
-                    config = {'learning_rate': 1e-00}
+                    config = {'learning_rate': 1e-01}
                     best_input_data = train_on_input(input_data - mean, iterate, adam, config)
                     best_input_data += mean
 
-                    prefix = str(current_iter).zfill(4)
+                    prefix = '0' + str(current_iter).zfill(4)
                     suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
                     fullOutPath = resultsDir + '/' + prefix + '_gatys_st' + layer_name_style + '_feat' + layer_name_feat + suffix + ".png"
                     deprocess_image(best_input_data[0], fullOutPath)
