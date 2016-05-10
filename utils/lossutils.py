@@ -1,4 +1,5 @@
 import numpy as np 
+import scipy
 
 from keras.callbacks import Callback
 from keras import backend as K
@@ -10,25 +11,55 @@ class LossHistory(Callback):
     def on_batch_end(self, batch, logs={}):
         self.losses.append(logs.get('loss').item(0))
 
-
+########
+# Losses
+########
 def grams_frobenius_error(y_true, y_pred):
     samples, c, h, w = y_true.shape
 
+    # Compute the grams matrix
     y_true_reshaped = K.reshape(y_true, (samples, c, h * w))
     y_pred_reshaped = K.reshape(y_pred, (samples, c, h * w))
     y_true_T = K.permute_dimensions(y_true_reshaped, (0, 2, 1))
     y_pred_T = K.permute_dimensions(y_pred_reshaped, (0, 2, 1))
-    y_true_grams = K.dot(y_true_reshaped, y_true_T) / (2 * c * h * w)
-    y_pred_grams = K.dot(y_pred_reshaped, y_pred_T) / (2 * c * h * w)
+    y_true_grams = K.dot(y_true_reshaped, y_true_T) / (2. * c * h * w)
+    y_pred_grams = K.dot(y_pred_reshaped, y_pred_T) / (2. * c * h * w)
+
+    # Compute the frobenius norm
     loss = K.sum(K.square(y_pred_grams - y_true_grams))
 
     return loss
 
-def euclidian_error(y_true, y_pred):
-    loss = K.sum(K.square(y_pred - y_true)) / 2
+def squared_nornalized_euclidian_error(y_true, y_pred):
+    samples, c, h, w = y_true.shape
+
+    # Compute the euclidian distance
+    loss = K.sum(K.square(y_pred - y_true)) / (2. * c * h * w)
 
     return loss
 
+#######
+# Regularizer
+#######
+def total_variation_error(y, beta=2.):
+    samples, c, h, w = y.shape
+
+    y_shifted_up = np.zeros((samples, c, h+1, w))
+    y_shifted_up[:, :, :-1, :] = y
+    y_shifted_up = scipy.delete(y_shifted_up, 0, 2)
+
+    y_shifted_left = np.zeros((samples, c, h, w+1))
+    y_shifted_left[:, :, :, :-1] = y
+    y_shifted_left = scipy.delete(y_shifted_left, 0, 3)
+
+    out = K.pow(K.square(y_shifted_up - y) + K.square(y_shifted_left - y), beta / 2.)
+    loss = K.sum(out[:, :, :-1, :-1])
+
+    return loss
+
+##########
+# Training
+##########
 def train_on_input(input_data, iteratee, optimizer, config, max_iter=1000):
     print('Training input')
     loss_val = 1e15

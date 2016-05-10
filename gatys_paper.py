@@ -61,31 +61,40 @@ loss_style4_3 = grams_frobenius_error(out_style_labels[3], out4_3)
 loss_style5_3 = grams_frobenius_error(out_style_labels[4], out5_3)
 
 losses_feat = []
-losses_feat.append(euclidian_error(out_feat_labels[0], out1_2))
-losses_feat.append(euclidian_error(out_feat_labels[1], out2_2))
-losses_feat.append(euclidian_error(out_feat_labels[2], out3_3))
-losses_feat.append(euclidian_error(out_feat_labels[3], out4_3))
-losses_feat.append(euclidian_error(out_feat_labels[4], out5_3))
+losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[0], out1_2))
+losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[1], out2_2))
+losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[2], out3_3))
+losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[3], out4_3))
+losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[4], out5_3))
+
+reg_TV = total_variation_error(input_data)
 
 for idx, loss_feat in enumerate(losses_feat):
     layer_name_feat = layers[idx]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
-    for alpha in [1e04, 1e02, 1., 1e-02, 1e-04]:
-        print("alpha:", alpha)
+    for alpha in [1., 1e-02, 1e-04]:
+        for beta in [1., 1e-02, 1e-04]:
+            for gamma in [0, 1e-02, 1e-04]:
+                if alpha == beta and alpha != 1:
+                    continue
+                print("alpha, beta, gamma:", alpha, beta, gamma)
 
-        print('Compiling model')
-        loss = alpha * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) + loss_feat
+                print('Compiling model')
+                loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
+                    + beta * loss_feat \
+                    + gamma * reg_TV
 
-        grads = K.gradients(loss, input_layer)[0]
-        grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-5)
-        iterate = K.function([input_layer], [loss, grads])
+                grads = K.gradients(loss, input_layer)[0]
+                grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-5)
+                iterate = K.function([input_layer], [loss, grads])
 
-        config = {'learning_rate': 1e-00}
-        best_input_data = train_on_input(input_data - mean, iterate, adam, config, 2500)
-        best_input_data += mean
+                config = {'learning_rate': 1e-00}
+                best_input_data = train_on_input(input_data - mean, iterate, adam, config, 10)
+                best_input_data += mean
 
-        prefix = str(current_iter).zfill(4)
-        fullOutPath = resultsDir + '/' + prefix + '_gatys_paper_feat' + layer_name_feat + '_alpha' + str(alpha) + '.png'
-        deprocess_image(best_input_data[0], fullOutPath)
+                prefix = str(current_iter).zfill(4)
+                suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
+                fullOutPath = resultsDir + '/' + prefix + '_gatys_paper_feat' + layer_name_feat + suffix + '.png'
+                deprocess_image(best_input_data[0], fullOutPath)
 
-        current_iter += 1
+                current_iter += 1
