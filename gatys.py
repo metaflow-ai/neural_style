@@ -59,9 +59,12 @@ for layer_name_feat in layers_names:
         reg_TV = total_variation_error(input_data)
 
         print('Compiling VGG headless 5 for feat ' + layer_name_feat + ' and style ' + layer_name_style)
+        # At the same layer
+        # if alpha/beta >= 1e02 we only see style
+        # if alpha/beta <= 1e-04 we only see the picture
         for alpha in [1., 1e-02, 1e-04]:
-            for beta in [1., 1e-02, 1e-04]:
-                for gamma in [0, 1e-02, 1e-04]:
+            for beta in [1.]:
+                for gamma in [1, 1e-04, 0]:
                     if alpha == beta and alpha != 1:
                         continue
                     print("alpha, beta, gamma:", alpha, beta, gamma)

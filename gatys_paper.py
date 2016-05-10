@@ -73,8 +73,8 @@ for idx, loss_feat in enumerate(losses_feat):
     layer_name_feat = layers[idx]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
     for alpha in [1., 1e-02, 1e-04]:
-        for beta in [1., 1e-02, 1e-04]:
-            for gamma in [0, 1e-02, 1e-04]:
+        for beta in [1.]:
+            for gamma in [1, 1e-04, 0]:
                 if alpha == beta and alpha != 1:
                     continue
                 print("alpha, beta, gamma:", alpha, beta, gamma)
