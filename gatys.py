@@ -30,9 +30,9 @@ print('Loading mean')
 meanPath = vgg16Dir + '/vgg-16_mean.npy'
 mean = VGG_16_mean(path=meanPath)
 
-print('Loading VGG headless 3')
+print('Loading VGG headless 5')
 modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
-model = VGG_16_headless_5(modelWeights, trainable=False)
+model = VGG_16_headless_5(modelWeights, trainable=False, poolingType='average')
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 layers_names = [l for l in layer_dict if len(re.findall('conv_', l))]
 layers_names.sort()

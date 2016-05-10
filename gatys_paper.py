@@ -32,7 +32,7 @@ mean = VGG_16_mean(path=meanPath)
 
 print('Loading VGG headless 5')
 modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
-model = VGG_16_headless_5(modelWeights, trainable=False)
+model = VGG_16_headless_5(modelWeights, trainable=False, poolingType='average')
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 input_layer = layer_dict['input'].input
 
