@@ -34,13 +34,15 @@ print('Loading VGG headless 5')
 modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
 model = VGG_16_headless_5(modelWeights, trainable=False)
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
+layers_names = [l for l in layer_dict if len(re.findall('conv_', l))]
+layers_names.sort()
+
 input_layer = layer_dict['input'].input
 
 print('Building white noise images')
 input_style_data = create_noise_tensor(3, 256, 256)
 input_feat_data = create_noise_tensor(3, 256, 256)
 
-layers_names = reversed([l for l in layer_dict if len(re.findall('conv_', l))])
 current_iter = 1
 for layer_name in layers_names:
     for gamma in [1e-04, 1e-06, 0.]:
@@ -60,7 +62,7 @@ for layer_name in layers_names:
         iterate_style = K.function([input_layer], [loss_style, grads_style])
 
         print('Compiling VGG headless 1 for ' + layer_name + ' feature reconstruction')
-        loss_feat = squared_nornalized_euclidian_error(out_ilabels[0], out)
+        loss_feat = squared_normalized_euclidian_error(out_ilabels[0], out)
         grads_feat = K.gradients(loss_feat + gamma * reg_TV, input_layer)[0]
         grads_feat /= (K.sqrt(K.mean(K.square(grads_feat))) + K.epsilon())
         iterate_feat = K.function([input_layer], [loss_feat, grads_feat])
@@ -70,14 +72,14 @@ for layer_name in layers_names:
 
         print('Training the image for style')
         config = {'learning_rate': 1e-00}
-        best_input_style_data = train_on_input(input_style_data - mean, iterate_style, adam, config, 600)
+        best_input_style_data = train_input(input_style_data - mean, iterate_style, adam, config, 600)
         best_input_style_data += mean
         fullOutPath = resultsDir + '/' + prefix + '_style_' + layer_name + suffix + ".png"
         deprocess_image(best_input_style_data[0], fullOutPath)
 
         print('Training the image for feature')
         config = {'learning_rate': 1e-00}
-        best_input_feat_data = train_on_input(input_feat_data - mean, iterate_feat, adam, config, 600)
+        best_input_feat_data = train_input(input_feat_data - mean, iterate_feat, adam, config, 600)
         best_input_feat_data += mean
         fullOutPath = resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".png"
         deprocess_image(best_input_feat_data[0], fullOutPath)

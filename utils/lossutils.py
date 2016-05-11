@@ -29,10 +29,7 @@ def grams_frobenius_error(y_true, y_pred):
 
     return loss
 
-def squared_nornalized_euclidian_error(y_true, y_pred):
-    samples, c, h, w = y_true.shape
-
-    # Compute the euclidian distance
+def squared_normalized_euclidian_error(y_true, y_pred):
     loss = K.mean(K.square(y_pred - y_true) / 2.) 
 
     return loss
@@ -41,8 +38,6 @@ def squared_nornalized_euclidian_error(y_true, y_pred):
 # Regularizer
 #######
 def total_variation_error(y, beta=2.):
-    samples, c, h, w = y.shape
-
     a = K.square(y[:, :, 1:, :-1] - y[:, :, :-1, :-1])
     b = K.square(y[:, :, :-1, 1:] - y[:, :, :-1, :-1])
     loss = K.sum(K.pow(a + b, beta / 2.))
@@ -52,21 +47,31 @@ def total_variation_error(y, beta=2.):
 ##########
 # Training
 ##########
-def train_on_input(input_data, iteratee, optimizer, config, max_iter=2000):
+def train_input(input_data, train_iteratee, optimizer, config, max_iter=2000, cross_val_iteratee=None):
     print('Training input')
-    loss_val = 1e15
+    losses = {'training_loss': [], 'cross_val_loss': [], 'best_loss': 1e15}
+    train_loss = 1e15
     wait = 0
-    best_loss = 1e15
     best_input_data = None
     for i in range(max_iter):
-        loss_val, grads_val = iteratee([input_data])
+        train_loss, grads_val = train_iteratee([input_data])
         input_data, config = optimizer(input_data, grads_val, config)
 
-        if i % 10 == 0:
-            print(str(i) + ':', loss_val)
+        if cross_val_iteratee != None:
+            cross_val_loss = cross_val_iteratee([input_data])
 
-        if loss_val < best_loss:
-            best_loss = loss_val
+        losses.train_loss.append(train_loss)
+        if cross_val_iteratee != None:
+            losses.cross_val_loss.append(cross_val_loss)
+
+        if i % 1 == 0:
+            if cross_val_iteratee != None:
+                print(str(i) + ':', train_loss, cross_val_loss)
+            else:
+                print(str(i) + ':', train_loss)
+
+        if train_loss < losses.best_loss:
+            losses.best_loss = train_loss
             best_input_data = np.copy(input_data)
             wait = 0
         else:
@@ -74,5 +79,40 @@ def train_on_input(input_data, iteratee, optimizer, config, max_iter=2000):
                 break
             wait +=1
 
-    print("final loss:", best_loss)
-    return best_input_data
+    print("final loss:", losses.best_loss)
+    return best_input_data, losses
+
+def train_weights(input_data, trainable_weights, train_iteratee, optimizer, config, max_iter=2000, cross_val_iteratee=None):
+    print('Training input')
+    losses = {'training_loss': [], 'cross_val_loss': [], 'best_loss': 1e15}
+    train_loss = 1e15
+    wait = 0
+    best_trainable_weights = None
+    for i in range(max_iter):
+        train_loss, grads_val = train_iteratee([input_data])
+        trainable_weights, config = optimizer(trainable_weights, grads_val, config)
+
+        if cross_val_iteratee != None:
+            cross_val_loss = cross_val_iteratee([input_data])
+
+        losses.train_loss.append(train_loss)
+        if cross_val_iteratee != None:
+            losses.cross_val_loss.append(cross_val_loss)
+
+        if i % 1 == 0:
+            if cross_val_iteratee != None:
+                print(str(i) + ':', train_loss, cross_val_loss)
+            else:
+                print(str(i) + ':', train_loss)
+
+        if train_loss < losses.best_loss:
+            losses.best_loss = train_loss
+            best_trainable_weights = np.copy(trainable_weights)
+            wait = 0
+        else:
+            if wait >= 100 and i > max_iter / 2:
+                break
+            wait +=1
+
+    print("final loss:", losses.best_loss)
+    return best_trainable_weights, losses

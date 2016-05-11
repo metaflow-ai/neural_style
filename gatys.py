@@ -55,7 +55,7 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
         out_feat_labels = predict_feat([X_train - mean])
 
         loss_style = grams_frobenius_error(out_style_labels[0], out_style)
-        loss_feat = squared_nornalized_euclidian_error(out_feat_labels[0], out_feat)
+        loss_feat = squared_normalized_euclidian_error(out_feat_labels[0], out_feat)
         reg_TV = total_variation_error(input_layer)
 
         print('Compiling VGG headless 5 for feat ' + layer_name_feat + ' and style ' + layer_name_style)
@@ -76,7 +76,7 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
                     iterate = K.function([input_layer], [loss, grads])
 
                     config = {'learning_rate': 1e-00}
-                    best_input_data = train_on_input(input_data - mean, iterate, adam, config, 600)
+                    best_input_data = train_input(input_data - mean, iterate, adam, config, 600)
                     best_input_data += mean
 
                     prefix = str(current_iter).zfill(4)

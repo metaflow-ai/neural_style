@@ -17,14 +17,16 @@ if not os.path.isdir(resultsDir):
     os.makedirs(resultsDir)
 dataDir = dir + '/data'
 
-print('Loading a cat image')
+print('Loading train images')
+X_train_style = np.array([load_image(dataDir + '/paintings/vangogh.jpg')])
 X_train = load_image(dataDir + '/overfit/000.jpg')
 print("X_train shape:", X_train.shape)
+print("X_train_style shape:", X_train_style.shape)
 
-print('Loading Van Gogh')
-vanGoghPath = dataDir + '/paintings/vangogh.jpg'
-X_train_paint = np.array([load_image(vanGoghPath)])
-print("X_train_paint shape:", X_train_paint.shape)
+print('Loading cross validation images')
+X_cv_style = np.array([load_image(dataDir + '/paintings/vangogh.jpg')])
+X_cv = load_image(dataDir + '/overfit/001.jpg')
+
 
 print('Loading mean')
 meanPath = vgg16Dir + '/vgg-16_mean.npy'
@@ -42,39 +44,55 @@ input_data = create_noise_tensor(3, 256, 256)
 layers_names = [l for l in layer_dict if len(re.findall('conv_', l))]
 current_iter = 1
 
-print('Creating labels')
+print('Creating training labels')
 layers = ['conv_1_2', 'conv_2_2', 'conv_3_3', 'conv_4_3', 'conv_5_3']
-out1_2 = layer_dict['conv_1_2'].output
-out2_2 = layer_dict['conv_2_2'].output
-out3_3 = layer_dict['conv_3_3'].output
-out4_3 = layer_dict['conv_4_3'].output
-out5_3 = layer_dict['conv_5_3'].output
-predict = K.function([input_layer], [out1_2, out2_2, out3_3, out4_3, out5_3])
+outputs_layer = [layer_dict[out].output for out in layers]
+predict = K.function([input_layer], outputs_layer)
 
-out_style_labels = predict([X_train_paint - mean])
-out_feat_labels = predict([X_train - mean])
+train_style_labels = predict([X_train_style - mean])
+train_feat_labels = predict([X_train - mean])
 
-loss_style1_2 = grams_frobenius_error(out_style_labels[0], out1_2)
-loss_style2_2 = grams_frobenius_error(out_style_labels[1], out2_2)
-loss_style3_3 = grams_frobenius_error(out_style_labels[2], out3_3)
-loss_style4_3 = grams_frobenius_error(out_style_labels[3], out4_3)
-loss_style5_3 = grams_frobenius_error(out_style_labels[4], out5_3)
+if len(X_cv_style):
+    cv_style_labels = predict([X_cv_style - mean])
+    cv_feat_labels = predict([X_cv - mean])
 
-losses_feat = []
+print('preparing loss functions')
+train_loss_style1_2 = grams_frobenius_error(train_style_labels[0], outputs_layer[0])
+train_loss_style2_2 = grams_frobenius_error(train_style_labels[1], outputs_layer[1])
+train_loss_style3_3 = grams_frobenius_error(train_style_labels[2], outputs_layer[2])
+train_loss_style4_3 = grams_frobenius_error(train_style_labels[3], outputs_layer[3])
+train_loss_style5_3 = grams_frobenius_error(train_style_labels[4], outputs_layer[4])
+
+train_losses_feat = []
 # The first two are too "clean" for human perception
-# losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[0], out1_2))
-# losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[1], out2_2))
+# train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[0], outputs_layer[0]))
+# train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[1], outputs_layer[1]))
 
-losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[2], out3_3))
-losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[3], out4_3))
+train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[2], outputs_layer[2]))
+
+# This one tend to be much more dreamy
+train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[3], outputs_layer[3]))
 
 # The Fifth layer doesn't hold enough information to rebuild the structure of the photo
-# losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[4], out5_3))
+# train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[4], outputs_layer[4]))
+
+if len(X_cv_style):
+    cv_loss_style1_2 = grams_frobenius_error(cv_style_labels[0], outputs_layer[0])
+    cv_loss_style2_2 = grams_frobenius_error(cv_style_labels[1], outputs_layer[1])
+    cv_loss_style3_3 = grams_frobenius_error(cv_style_labels[2], outputs_layer[2])
+    cv_loss_style4_3 = grams_frobenius_error(cv_style_labels[3], outputs_layer[3])
+    cv_loss_style5_3 = grams_frobenius_error(cv_style_labels[4], outputs_layer[4])
+
+    cv_losses_feat = []
+    cv_losses_feat.append(squared_normalized_euclidian_error(cv_feat_labels[2], outputs_layer[2]))
+    cv_losses_feat.append(squared_normalized_euclidian_error(cv_feat_labels[3], outputs_layer[3]))
 
 reg_TV = total_variation_error(input_layer)
 
-for idx, loss_feat in enumerate(losses_feat):
+for idx, train_loss_feat in enumerate(train_losses_feat):
     layer_name_feat = layers[idx + 2]
+    if len(X_cv_style):
+        cv_loss_feat = cv_losses_feat[idx]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
     for alpha in [1e-02, 1e-05]: # one for layer conv_3_3 and one for layer conv_4_3
         for beta in [1.]:
@@ -84,16 +102,24 @@ for idx, loss_feat in enumerate(losses_feat):
                 print("alpha, beta, gamma:", alpha, beta, gamma)
 
                 print('Compiling model')
-                loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
-                    + beta * loss_feat \
+                train_loss = alpha * 0.2 * (train_loss_style1_2 + train_loss_style2_2 + train_loss_style3_3 + train_loss_style4_3 + train_loss_style5_3) \
+                    + beta * train_loss_feat \
                     + gamma * reg_TV
 
-                grads = K.gradients(loss, input_layer)[0]
+                grads = K.gradients(train_loss, input_layer)[0]
                 grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
-                iterate = K.function([input_layer], [loss, grads])
+                train_iteratee = K.function([input_layer], [train_loss, grads])
+
+                if len(X_cv_style):
+                    cv_loss = alpha * 0.2 * (cv_loss_style1_2 + cv_loss_style2_2 + cv_loss_style3_3 + cv_loss_style4_3 + cv_loss_style5_3) \
+                        + beta * cv_loss_feat \
+                        + gamma * reg_TV
+                    cross_val_iteratee = K.function([input_layer], [cv_loss])
+                else:
+                    cross_val_iteratee = None
 
                 config = {'learning_rate': 1e-01}
-                best_input_data = train_on_input(input_data - mean, iterate, adam, config, 4000)
+                best_input_data = train_input(input_data - mean, train_iteratee, adam, config, 4000, cross_val_iteratee)
                 best_input_data += mean
 
                 prefix = str(current_iter).zfill(4)

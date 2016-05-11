@@ -2,10 +2,8 @@
 .DS_Store
 
 # Project
-data/output/*.jpg
-data/output/*.png
-data/train/*.jpg
-data/train/*.png
+data/**/*.jpg
+data/**/*.png
 vgg16/vgg-16_*weights*
 models/results/*
 models/*.hdf5
