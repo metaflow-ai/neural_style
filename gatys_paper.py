@@ -61,20 +61,24 @@ loss_style4_3 = grams_frobenius_error(out_style_labels[3], out4_3)
 loss_style5_3 = grams_frobenius_error(out_style_labels[4], out5_3)
 
 losses_feat = []
-losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[0], out1_2))
-losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[1], out2_2))
+# The first two are too "clean" for human perception
+# losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[0], out1_2))
+# losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[1], out2_2))
+
 losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[2], out3_3))
 losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[3], out4_3))
-losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[4], out5_3))
+
+# The Fifth layer doesn't hold enough information to rebuild the structure of the photo
+# losses_feat.append(squared_nornalized_euclidian_error(out_feat_labels[4], out5_3))
 
 reg_TV = total_variation_error(input_layer)
 
 for idx, loss_feat in enumerate(losses_feat):
-    layer_name_feat = layers[idx]
+    layer_name_feat = layers[idx + 2]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
-    for alpha in [1., 1e-02, 1e-04]:
+    for alpha in [1e-02, 1e-05]: # one for layer conv_3_3 and one for layer conv_4_3
         for beta in [1.]:
-            for gamma in [1e-05, 1e-06]:
+            for gamma in [1e-05, 1e-06, 1e-07]:
                 if alpha == beta and alpha != 1:
                     continue
                 print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -89,7 +93,7 @@ for idx, loss_feat in enumerate(losses_feat):
                 iterate = K.function([input_layer], [loss, grads])
 
                 config = {'learning_rate': 1e-01}
-                best_input_data = train_on_input(input_data - mean, iterate, adam, config, 5000)
+                best_input_data = train_on_input(input_data - mean, iterate, adam, config, 4000)
                 best_input_data += mean
 
                 prefix = str(current_iter).zfill(4)

@@ -34,7 +34,7 @@ print('Loading VGG headless 5')
 modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
 model = VGG_16_headless_5(modelWeights, trainable=False)
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
-input_img = layer_dict['input'].input
+input_layer = layer_dict['input'].input
 
 print('Building white noise images')
 input_style_data = create_noise_tensor(3, 256, 256)
@@ -43,40 +43,44 @@ input_feat_data = create_noise_tensor(3, 256, 256)
 layers_names = reversed([l for l in layer_dict if len(re.findall('conv_', l))])
 current_iter = 1
 for layer_name in layers_names:
-    print('Creating labels for ' + layer_name)
-    out = layer_dict[layer_name].output
-    predict = K.function([input_img], [out])
+    for gamma in [1e-04, 1e-06, 0.]:
+        print('Creating labels for ' + layer_name + ' with gamma ' + str(gamma))
+        out = layer_dict[layer_name].output
+        predict = K.function([input_layer], [out])
 
-    out_plabels = predict([X_train_paint - mean])
-    out_ilabels = predict([X_train - mean])
+        out_plabels = predict([X_train_paint - mean])
+        out_ilabels = predict([X_train - mean])
+        
+        reg_TV = total_variation_error(input_layer)
 
-    print('Compiling VGG headless 1 for ' + layer_name + ' style reconstruction')
-    loss_style = grams_frobenius_error(out_plabels[0], out)
-    grads_style = K.gradients(loss_style, input_img)[0]
-    grads_style /= (K.sqrt(K.mean(K.square(grads_style))) + 1e-5)
-    iterate_style = K.function([input_img], [loss_style, grads_style])
+        print('Compiling VGG headless 1 for ' + layer_name + ' style reconstruction')
+        loss_style = grams_frobenius_error(out_plabels[0], out)
+        grads_style = K.gradients(loss_style + gamma * reg_TV, input_layer)[0]
+        grads_style /= (K.sqrt(K.mean(K.square(grads_style))) + K.epsilon())
+        iterate_style = K.function([input_layer], [loss_style, grads_style])
 
-    print('Compiling VGG headless 1 for ' + layer_name + ' feature reconstruction')
-    loss_feat = euclidian_error(out_ilabels[0], out)
-    grads_feat = K.gradients(loss_feat, input_img)[0]
-    grads_feat /= (K.sqrt(K.mean(K.square(grads_feat))) + 1e-5)
-    iterate_feat = K.function([input_img], [loss_feat, grads_feat])
+        print('Compiling VGG headless 1 for ' + layer_name + ' feature reconstruction')
+        loss_feat = squared_nornalized_euclidian_error(out_ilabels[0], out)
+        grads_feat = K.gradients(loss_feat + gamma * reg_TV, input_layer)[0]
+        grads_feat /= (K.sqrt(K.mean(K.square(grads_feat))) + K.epsilon())
+        iterate_feat = K.function([input_layer], [loss_feat, grads_feat])
 
-    prefix = str(current_iter).zfill(4)
+        prefix = str(current_iter).zfill(4)
+        suffix = '_gamma' + str(gamma)
 
-    print('Training the image for style')
-    config = {'learning_rate': 1e-00}
-    best_input_style_data = train_on_input(input_style_data - mean, iterate_style, adam, config)
-    best_input_style_data += mean
-    fullOutPath = resultsDir + '/' + prefix + '_style_' + layer_name + ".png"
-    deprocess_image(best_input_style_data[0], fullOutPath)
+        print('Training the image for style')
+        config = {'learning_rate': 1e-00}
+        best_input_style_data = train_on_input(input_style_data - mean, iterate_style, adam, config, 600)
+        best_input_style_data += mean
+        fullOutPath = resultsDir + '/' + prefix + '_style_' + layer_name + suffix + ".png"
+        deprocess_image(best_input_style_data[0], fullOutPath)
 
-    print('Training the image for feature')
-    config = {'learning_rate': 1e-00}
-    best_input_feat_data = train_on_input(input_feat_data - mean, iterate_feat, adam, config)
-    best_input_feat_data += mean
-    fullOutPath = resultsDir + '/' + prefix + '_feat_' + layer_name + ".png"
-    deprocess_image(best_input_feat_data[0], fullOutPath)
+        print('Training the image for feature')
+        config = {'learning_rate': 1e-00}
+        best_input_feat_data = train_on_input(input_feat_data - mean, iterate_feat, adam, config, 600)
+        best_input_feat_data += mean
+        fullOutPath = resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".png"
+        deprocess_image(best_input_feat_data[0], fullOutPath)
 
-    current_iter += 1
+        current_iter += 1
 
