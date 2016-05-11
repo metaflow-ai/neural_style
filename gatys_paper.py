@@ -74,7 +74,7 @@ for idx, loss_feat in enumerate(losses_feat):
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
     for alpha in [1., 1e-02, 1e-04]:
         for beta in [1.]:
-            for gamma in [1, 1e-02, 1e-04]:
+            for gamma in [1e-05, 1e-06]:
                 if alpha == beta and alpha != 1:
                     continue
                 print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -89,7 +89,7 @@ for idx, loss_feat in enumerate(losses_feat):
                 iterate = K.function([input_layer], [loss, grads])
 
                 config = {'learning_rate': 1e-01}
-                best_input_data = train_on_input(input_data - mean, iterate, adam, config)
+                best_input_data = train_on_input(input_data - mean, iterate, adam, config, 5000)
                 best_input_data += mean
 
                 prefix = str(current_iter).zfill(4)

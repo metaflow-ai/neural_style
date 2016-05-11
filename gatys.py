@@ -64,7 +64,7 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
         # if alpha/beta <= 1e-04 we only see the picture
         for alpha in [1e02, 1., 1e-02, 1e-04]:
             for beta in [1.]:
-                for gamma in [1, 1e-02, 1e-04]:
+                for gamma in [1e-05, 1e-06]:
                     if alpha == beta and alpha != 1:
                         continue
                     print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -75,11 +75,11 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
                     grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
                     iterate = K.function([input_layer], [loss, grads])
 
-                    config = {'learning_rate': 1e-01}
-                    best_input_data = train_on_input(input_data - mean, iterate, adam, config)
+                    config = {'learning_rate': 1e-00}
+                    best_input_data = train_on_input(input_data - mean, iterate, adam, config, 600)
                     best_input_data += mean
 
-                    prefix = '0' + str(current_iter).zfill(4)
+                    prefix = str(current_iter).zfill(4)
                     suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
                     fullOutPath = resultsDir + '/' + prefix + '_gatys_st' + layer_name_style + '_feat' + layer_name_feat + suffix + ".png"
                     deprocess_image(best_input_data[0], fullOutPath)

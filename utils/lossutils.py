@@ -1,5 +1,4 @@
 import numpy as np 
-import scipy
 
 from keras.callbacks import Callback
 from keras import backend as K
@@ -34,7 +33,7 @@ def squared_nornalized_euclidian_error(y_true, y_pred):
     samples, c, h, w = y_true.shape
 
     # Compute the euclidian distance
-    loss = K.sum(K.square(y_pred - y_true)) / (2. * c * h * w)
+    loss = K.mean(K.square(y_pred - y_true) / 2.) 
 
     return loss
 
