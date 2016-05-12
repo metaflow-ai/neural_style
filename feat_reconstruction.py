@@ -45,16 +45,17 @@ input_feat_data = create_noise_tensor(3, 256, 256)
 
 current_iter = 1
 for layer_name in layers_names:
+
+    print('Creating labels for ' + layer_name)
+    out = layer_dict[layer_name].output
+    predict = K.function([input_layer], [out])
+
+    out_plabels = predict([X_train_paint - mean])
+    out_ilabels = predict([X_train - mean])
+    
+    reg_TV = total_variation_error(input_layer)
+
     for gamma in [1e-04, 1e-06, 0.]:
-        print('Creating labels for ' + layer_name + ' with gamma ' + str(gamma))
-        out = layer_dict[layer_name].output
-        predict = K.function([input_layer], [out])
-
-        out_plabels = predict([X_train_paint - mean])
-        out_ilabels = predict([X_train - mean])
-        
-        reg_TV = total_variation_error(input_layer)
-
         print('Compiling VGG headless 1 for ' + layer_name + ' style reconstruction')
         loss_style = grams_frobenius_error(out_plabels[0], out)
         grads_style = K.gradients(loss_style + gamma * reg_TV, input_layer)[0]

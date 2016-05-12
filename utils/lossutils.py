@@ -1,14 +1,6 @@
 import numpy as np 
 
-from keras.callbacks import Callback
 from keras import backend as K
-
-class LossHistory(Callback):
-    def on_train_begin(self, logs={}):
-        self.losses = []
-
-    def on_batch_end(self, batch, logs={}):
-        self.losses.append(logs.get('loss').item(0))
 
 ########
 # Losses
@@ -47,31 +39,31 @@ def total_variation_error(y, beta=2.):
 ##########
 # Training
 ##########
-def train_input(input_data, train_iteratee, optimizer, config, max_iter=2000, cross_val_iteratee=None):
+def train_input(input_data, train_iteratee, optimizer, config={}, cv_input_data=None, cross_val_iteratee=None, max_iter=2000):
     print('Training input')
     losses = {'training_loss': [], 'cross_val_loss': [], 'best_loss': 1e15}
-    train_loss = 1e15
+    training_loss = 1e15
     wait = 0
     best_input_data = None
     for i in range(max_iter):
-        train_loss, grads_val = train_iteratee([input_data])
+        training_loss, grads_val = train_iteratee([input_data])
         input_data, config = optimizer(input_data, grads_val, config)
 
         if cross_val_iteratee != None:
             cross_val_loss = cross_val_iteratee([input_data])
 
-        losses.train_loss.append(train_loss)
+        losses['training_loss'].append(training_loss)
         if cross_val_iteratee != None:
-            losses.cross_val_loss.append(cross_val_loss)
+            losses['cross_val_loss'].append(cross_val_loss)
 
-        if i % 1 == 0:
+        if i % 10 == 0:
             if cross_val_iteratee != None:
-                print(str(i) + ':', train_loss, cross_val_loss)
+                print(str(i) + ':', training_loss, cross_val_loss)
             else:
-                print(str(i) + ':', train_loss)
+                print(str(i) + ':', training_loss)
 
-        if train_loss < losses.best_loss:
-            losses.best_loss = train_loss
+        if training_loss < losses['best_loss']:
+            losses['best_loss'] = training_loss
             best_input_data = np.copy(input_data)
             wait = 0
         else:
@@ -79,34 +71,36 @@ def train_input(input_data, train_iteratee, optimizer, config, max_iter=2000, cr
                 break
             wait +=1
 
-    print("final loss:", losses.best_loss)
+    print("final loss:", losses['best_loss'])
     return best_input_data, losses
 
-def train_weights(input_data, trainable_weights, train_iteratee, optimizer, config, max_iter=2000, cross_val_iteratee=None):
+def train_weights(train_input_data, trainable_weights, train_iteratee, optimizer, config={}, cv_input_data=None, cross_val_iteratee=None, max_iter=2000):
     print('Training input')
     losses = {'training_loss': [], 'cross_val_loss': [], 'best_loss': 1e15}
-    train_loss = 1e15
+    training_loss = 1e15
     wait = 0
     best_trainable_weights = None
     for i in range(max_iter):
-        train_loss, grads_val = train_iteratee([input_data])
+        training_loss, grads_val = train_iteratee([train_input_data, True])
+        print(grads_val)
+        # trainable_weights = [K.variable(np.zeros(K.get_value(p).shape)) for p in trainable_weights]
         trainable_weights, config = optimizer(trainable_weights, grads_val, config)
 
         if cross_val_iteratee != None:
-            cross_val_loss = cross_val_iteratee([input_data])
+            cross_val_loss = cross_val_iteratee([cv_input_data, False])
 
-        losses.train_loss.append(train_loss)
+        losses['training_loss'].append(training_loss)
         if cross_val_iteratee != None:
-            losses.cross_val_loss.append(cross_val_loss)
+            losses['cross_val_loss'].append(cross_val_loss)
 
-        if i % 1 == 0:
+        if i % 10 == 0:
             if cross_val_iteratee != None:
-                print(str(i) + ':', train_loss, cross_val_loss)
+                print(str(i) + ':', training_loss, cross_val_loss)
             else:
-                print(str(i) + ':', train_loss)
+                print(str(i) + ':', training_loss)
 
-        if train_loss < losses.best_loss:
-            losses.best_loss = train_loss
+        if training_loss < losses['best_loss']:
+            losses['best_loss'] = training_loss
             best_trainable_weights = np.copy(trainable_weights)
             wait = 0
         else:
@@ -114,5 +108,5 @@ def train_weights(input_data, trainable_weights, train_iteratee, optimizer, conf
                 break
             wait +=1
 
-    print("final loss:", losses.best_loss)
+    print("final loss:", losses['best_loss'])
     return best_trainable_weights, losses

@@ -36,27 +36,22 @@ print('Loading VGG headless 5')
 modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
 model = VGG_16_headless_5(modelWeights, trainable=False, poolingType='average')
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
-input_layer = layer_dict['input'].input
-
-print('Building white noise images')
-input_data = create_noise_tensor(3, 256, 256)
-
-layers_names = [l for l in layer_dict if len(re.findall('conv_', l))]
-current_iter = 1
+input_layer = model.input
+layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_3', 'conv_4_3', 'conv_5_3']
+outputs_layer = [layer_dict[name].output for name in layers_used]
 
 print('Creating training labels')
-layers = ['conv_1_2', 'conv_2_2', 'conv_3_3', 'conv_4_3', 'conv_5_3']
-outputs_layer = [layer_dict[out].output for out in layers]
 predict = K.function([input_layer], outputs_layer)
 
 train_style_labels = predict([X_train_style - mean])
 train_feat_labels = predict([X_train - mean])
 
 if len(X_cv_style):
+    print('Creating cross validation labels')
     cv_style_labels = predict([X_cv_style - mean])
     cv_feat_labels = predict([X_cv - mean])
 
-print('preparing loss functions')
+print('Preparing training loss functions')
 train_loss_style1_2 = grams_frobenius_error(train_style_labels[0], outputs_layer[0])
 train_loss_style2_2 = grams_frobenius_error(train_style_labels[1], outputs_layer[1])
 train_loss_style3_3 = grams_frobenius_error(train_style_labels[2], outputs_layer[2])
@@ -77,6 +72,7 @@ train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[3]
 # train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[4], outputs_layer[4]))
 
 if len(X_cv_style):
+    print('Preparing cross validation loss functions')
     cv_loss_style1_2 = grams_frobenius_error(cv_style_labels[0], outputs_layer[0])
     cv_loss_style2_2 = grams_frobenius_error(cv_style_labels[1], outputs_layer[1])
     cv_loss_style3_3 = grams_frobenius_error(cv_style_labels[2], outputs_layer[2])
@@ -89,8 +85,12 @@ if len(X_cv_style):
 
 reg_TV = total_variation_error(input_layer)
 
+print('Building white noise images')
+input_data = create_noise_tensor(3, 256, 256)
+current_iter = 1
+
 for idx, train_loss_feat in enumerate(train_losses_feat):
-    layer_name_feat = layers[idx + 2]
+    layer_name_feat = layers_used[idx + 2]
     if len(X_cv_style):
         cv_loss_feat = cv_losses_feat[idx]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')

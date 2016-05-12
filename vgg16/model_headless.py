@@ -59,8 +59,7 @@ def VGG_16_headless_5(weights_path=None, input_shape=(3, 256, 256), trainable=Fa
         c21, c22, 
         c31, c32, c33, 
         c41, c42, c43,
-        c51, c52, c53,
-        c33]
+        c51, c52, c53]
     )
 
     if weights_path:
