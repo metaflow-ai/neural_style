@@ -1,16 +1,13 @@
-import numpy as np
-
 from keras.engine import merge
-from keras.layers.convolutional import (Convolution2D, MaxPooling2D,
-                                        UpSampling2D)
+from keras.layers.convolutional import (Convolution2D, UpSampling2D)
 from keras.layers.normalization import BatchNormalization
 from keras.layers.core import Activation
 from keras.layers import Input
 from keras.models import Model
 
 
-def style_transfer(weights_path=None):
-    input = Input(shape=(3, 256, 256), name='input', dtype='float32')
+def style_transfer(weights_path=None, input_shape=(3, 256, 256)):
+    input = Input(shape=input_shape, name='input', dtype='float32')
 
     # Downsampling
     c11 = Convolution2D(32, 9, 9, 
@@ -79,21 +76,21 @@ def style_transfer(weights_path=None):
     # out6 = Activation('relu')(bn62)
     out6 = merge([out5, bn62], mode='sum')
 
-    # This has to be checked, it might not be what we want
-    c71 = Convolution2D(64, 1, 1, 
-        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out6)
-    u71 = UpSampling2D(size=(2, 2))(c71)
-    bn71 = BatchNormalization(axis=1)(u71)
+    # This is not a deconvolution (but might be close enough)
+    u71 = UpSampling2D(size=(2, 2))(out6)
+    c71 = Convolution2D(64, 3, 3, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(u71)
+    bn71 = BatchNormalization(axis=1)(c71)
     a71 = Activation('relu')(bn71)
     
-    c81 = Convolution2D(32, 1, 1, 
-        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a71)
-    u81 = UpSampling2D(size=(2, 2))(c81)
-    bn81 = BatchNormalization(axis=1)(u81)
+    u81 = UpSampling2D(size=(2, 2))(a71)
+    c81 = Convolution2D(32, 3, 3, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(u81)
+    bn81 = BatchNormalization(axis=1)(c81)
     a81 = Activation('relu')(bn81)    
 
     c91 = Convolution2D(3, 9, 9, 
-        init='he_normal', subsample=(1, 1), border_mode='same', activation='relu')(a81)
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='relu', name='output')(a81)
     
     model = Model(input=[input], output=[c91])
 

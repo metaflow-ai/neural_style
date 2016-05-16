@@ -82,6 +82,6 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
                     prefix = str(current_iter).zfill(4)
                     suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
                     fullOutPath = resultsDir + '/' + prefix + '_gatys_st' + layer_name_style + '_feat' + layer_name_feat + suffix + ".png"
-                    deprocess_image(best_input_data[0], fullOutPath)
+                    deprocess_image(fullOutPath, best_input_data[0])
 
                     current_iter += 1

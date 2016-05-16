@@ -1,180 +1,144 @@
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 import json
 
 from keras import backend as K
-from keras.layers import Input
+from keras.engine.training import collect_trainable_weights
 from keras.layers.core import Lambda
-from keras.models import Model
 from keras.optimizers import Adam
-from keras.utils.visualize_util import plot
-from keras.callbacks import ModelCheckpoint
+# from keras.utils.visualize_util import plot
 
-from utils.lossutils import LossHistory, grams_frobenius_error, euclidian_error
 from vgg16.model import VGG_16_mean 
 from vgg16.model_headless import *
-from models.style_transfer import style_transfer
-from utils.imutils import load_images, load_image
+from models.style_transfer import *
 
+from utils.imutils import *
+from utils.lossutils import *
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg16Dir = dir + '/vgg16'
-resultsDir = dir + '/models/results'
+resultsDir = dir + '/models/results/st'
+if not os.path.isdir(resultsDir): 
+    os.makedirs(resultsDir)
 dataDir = dir + '/data'
+trainDir = dataDir + '/train'
 
-############
-# for 'th' dim_ordering (default): [batch, channels, height, width] 
-############
-print('Loading training set')
-# X_train = load_images(dataDir + '/train')
-X_train = load_images(dataDir + '/overfit')
-print("X_train shape:", X_train.shape)
+channels = 3
+width = 256
+height = 256
+input_shape = (channels, width, height)
+batch = 4
 
-print('Loading Van Gogh')
-vanGoghPath = dataDir + '/paintings/vangogh.jpg'
-X_train_paint = np.array([load_image(vanGoghPath)])
+
+print('Loading train images')
+painting_fullpath = dataDir + '/paintings/vangogh.jpg'
+X_style = np.array([load_image(painting_fullpath, (height, width))])
+# X_train = load_images(trainDir, size=(height, width))
+X_train = load_images(dataDir + '/overfit', size=(height, width))
+print("X_train shape: " + str(X_train.shape))
+print("X_style shape: " + str(X_style.shape))
+
+print('Loading cross validation images')
+# X_cv = load_images(dataDir + '/val')
+# X_cv = np.array([load_image(dataDir + '/overfit/001.jpg', (height, width))])
+X_cv = load_images(dataDir + '/overfit', size=(height, width))
+print("X_cv shape: " + str(X_cv.shape))
 
 print('Loading mean')
 meanPath = vgg16Dir + '/vgg-16_mean.npy'
 mean = VGG_16_mean(path=meanPath)
+print("mean shape: " + str(mean.shape))
 
-print('Loading VGG headless')
+print('Loading VGG headless 5 model')
 modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
-vgg_headless_model = VGG_16_headless_5(modelWeights, trainable=False)
-print(np.array(vgg_headless_model.layers).shape)
-# print(vgg_headless_model.summary())
+vgg_model = VGG_16_headless_5(modelWeights, input_shape=input_shape, trainable=False, poolingType='average')
 
-print('Loading style_transfer')
-stWeights = dir + '/models/st_vangogh_weights.hdf5'
-if os.path.isfile(stWeights): 
-    print("From weights")
-    st_model = style_transfer(stWeights)
+print('Loading style_transfer model')
+stWeightsFullpath = dir + '/models/st_vangogh_weights.hdf5'
+if os.path.isfile(stWeightsFullpath): 
+    print("Loading weights")
+    st_model = style_transfer(stWeightsFullpath, input_shape=input_shape)
 else:
-    print("From scratch")
-    st_model = style_transfer()
-print(np.array(st_model.layers).shape)
-# print(st_model.summary())
+    st_model = style_transfer(input_shape=input_shape)
+trainable_weights = collect_trainable_weights(st_model)
 
 print('Building full model')
-def get_output_shape(input_shape):
-    return input_shape
+l_output = Lambda(lambda x: x - mean, output_shape=lambda shape: shape)(st_model.output)
+[c11, c12, 
+c21, c22, 
+c31, c32, c33, 
+c41, c42, c43,
+c51, c52, c53] = vgg_model(l_output)
 
-input = Input(shape=(3, 256, 256), name='input')
-st1 = st_model(input)
-clip1 = Lambda(lambda x: K.clip(x, 0, 255), output_shape=get_output_shape)(st1)
-l1 = Lambda(lambda x: x - mean, output_shape=get_output_shape)(clip1)
-c11, c12, c21, c22, c31, c32, c33, c41, c42, c43, c51, c52, c53, c33_2 = vgg_headless_model(l1)
-full_model = Model(input=[input], output=[
-    c11, c12, 
-    c21, c22, 
-    c31, c32, c33, 
-    c41, c42, c43,
-    c51, c52, c53,
-    c33_2]
-)
-# full_model.load_weights()
+outputs = [c11, c12, c21, c22, c31, c32, c33, c41, c42, c43, c51, c52, c53]
+outputs_layer_style = [c12, c22, c33, c43, c53]
+outputs_layer_feat = [c33]
 
-print('Ploting models')
-plot(st_model, to_file=dir + '/models/st_model.png', show_shapes=True)
-plot(vgg_headless_model, to_file=dir + '/models/vgg_headless_model.png', show_shapes=True)
-plot(full_model, to_file=dir + '/models/full_model.png', show_shapes=True)
+predict_style = K.function([st_model.input, K.learning_phase()], outputs_layer_style)
+predict_feat = K.function([st_model.input, K.learning_phase()], outputs_layer_feat)
 
-print('Creating labels')
-vgg_headless_model.compile(loss='mean_squared_error', optimizer='sgd')
-labels = []
-(c11_plabels, c12_plabels, 
-    c21_plabels, c22_plabels, 
-    c31_plabels, c32_plabels, c33_plabels, 
-    c41_plabels, c42_plabels, c43_plabels, 
-    c51_plabels, c52_plabels, c53_plabels, 
-    c33_2_plabels) = vgg_headless_model.predict(X_train_paint - mean)
-for label in [c11_plabels, c12_plabels, 
-        c21_plabels, c22_plabels, 
-        c31_plabels, c32_plabels, c33_plabels, 
-        c41_plabels, c42_plabels, c43_plabels, 
-        c51_plabels, c52_plabels, c53_plabels]:
-    labels.append(np.repeat(label, X_train.shape[0], axis=0))
+print('Creating training labels')
+style_labels = predict_style([X_style - mean, False])
+train_feat_labels = predict_feat([X_train - mean, False])
+if len(X_cv):
+    cv_feat_labels = predict_feat([X_cv - mean, False])
 
-(c11_ilabels, c12_ilabels, 
-    c21_ilabels, c22_ilabels, 
-    c31_ilabels, c32_ilabels, c33_ilabels, 
-    c41_ilabels, c42_ilabels, c43_ilabels, 
-    c51_ilabels, c52_ilabels, c53_ilabels, 
-    c33_2_ilabels) = vgg_headless_model.predict(X_train - mean)
-labels.append(c33_2_ilabels)
-for label in labels:
-    print(label.shape)
+print('preparing loss functions')
+loss_style1_2 = grams_frobenius_error(style_labels[0], outputs_layer_style[0])
+loss_style2_2 = grams_frobenius_error(style_labels[1], outputs_layer_style[1])
+loss_style3_3 = grams_frobenius_error(style_labels[2], outputs_layer_style[2])
+loss_style4_3 = grams_frobenius_error(style_labels[3], outputs_layer_style[3])
+loss_style5_3 = grams_frobenius_error(style_labels[4], outputs_layer_style[4])
+train_loss_feat = squared_normalized_euclidian_error(train_feat_labels[0], outputs_layer_feat[0])
+if len(X_cv):
+    cv_loss_feat = squared_normalized_euclidian_error(cv_feat_labels[0], outputs_layer_feat[0])
 
-print('Compiling full_model')
-adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+reg_TV = total_variation_error(st_model.output)
 
-full_model.compile(
-    optimizer=adam,
-    loss=[
-        grams_frobenius_error, # conv_1_1
-        grams_frobenius_error, # conv_1_2
-        grams_frobenius_error, # conv_2_1
-        grams_frobenius_error, # conv_2_2
-        grams_frobenius_error, # conv_3_1
-        grams_frobenius_error, # conv_3_2
-        grams_frobenius_error, # conv_3_3
-        grams_frobenius_error, # conv_4_1
-        grams_frobenius_error, # conv_4_2
-        grams_frobenius_error, # conv_4_3
-        grams_frobenius_error, # conv_5_1
-        grams_frobenius_error, # conv_5_2
-        grams_frobenius_error, # conv_5_3
-        euclidian_error # conv_3_3
-    ],
-    loss_weights=[ # Style is as important as feature
-        0, # conv_1_1
-        0.2, # conv_1_2
-        0, # conv_2_1
-        0.2, # conv_2_2
-        0, # conv_3_1
-        0, # conv_3_2
-        0.2, # conv_3_3
-        0, # conv_4_1
-        0, # conv_4_2
-        0.2, # conv_4_3
-        0, # conv_5_1
-        0, # conv_5_2
-        0.2, # conv_5_3
-        1, # conv_3_3
-    ]
-)
+print('Compiling VGG headless 5')
+alpha = 1e-02
+beta = 1.
+current_iter = 0
+for gamma in [1e-05, 1e-06, 1e-07]:
+    print("alpha, beta, gamma:", alpha, beta, gamma)
 
+    print('Preparing train iteratee function')
+    train_loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
+        + beta * train_loss_feat \
+        + gamma * reg_TV
+    adam = Adam(lr=1e-02)
+    updates = adam.get_updates(trainable_weights, st_model.constraints, train_loss)
+    train_iteratee = K.function([st_model.input, K.learning_phase()], [train_loss], updates=updates)
 
-history = LossHistory()
-fullpath_loss = resultsDir + '/full_model_losses.json'
-if os.path.isfile(fullpath_loss): 
-    print('Loading history')
-    history.losses = json.load(fullpath_loss)
+    if len(X_cv):
+        print('Preparing cv iteratee function')
+        cv_loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
+            + beta * cv_loss_feat \
+            + gamma * reg_TV
+        cross_val_iteratee = K.function([st_model.input, K.learning_phase()], [cv_loss])
+    else:
+        cross_val_iteratee = None
 
-print('Training full_model')
-full_model.fit(
-    X_train,
-    labels,
-    nb_epoch=1, 
-    batch_size=4,
-    callbacks=[
-        #ModelCheckpoint(
-        #    resultsDir + '/full_model_weights.{epoch:02d}-{loss:.2f}.hdf5",
-        #    monitor='loss',
-        #    verbose=1
-        #),
-        history
-    ]
-)
+    best_trainable_weights, losses = train_weights(
+        X_train, 
+        st_model, 
+        train_iteratee, 
+        cv_input_data=X_cv, 
+        cross_val_iteratee=cross_val_iteratee, 
+        max_iter=10
+    )
 
-print("Saving final data")
-st_model.save_weights(stWeights, overwrite=True)
+    prefix = str(current_iter).zfill(4)
+    suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
+    st_weights = resultsDir + '/' + prefix + 'st_vangogh_weights' + suffix + '.hdf5'
+    fullpath_loss = resultsDir + '/' + prefix + 'st_vangogh_loss' + suffix + '.json'
+    current_iter += 1
 
-with open(fullpath_loss, 'w') as outfile:
-    json.dump(history.losses, outfile)
+    print("Saving final data")
+    st_model.set_weights(best_trainable_weights)
+    st_model.save_weights(st_weights, overwrite=True)
 
-plt.plot(history.losses)
-plt.xlabel('Iteration number')
-plt.ylabel('Loss value')
-plt.savefig(resultsDir + '/loss.png')
+    with open(fullpath_loss, 'w') as outfile:
+        json.dump(losses, outfile)  
+
+    plot_losses(losses, resultsDir, prefix, suffix)

@@ -76,14 +76,14 @@ for layer_name in layers_names:
         best_input_style_data = train_input(input_style_data - mean, iterate_style, adam, config, 600)
         best_input_style_data += mean
         fullOutPath = resultsDir + '/' + prefix + '_style_' + layer_name + suffix + ".png"
-        deprocess_image(best_input_style_data[0], fullOutPath)
+        deprocess_image(fullOutPath, best_input_style_data[0])
 
         print('Training the image for feature')
         config = {'learning_rate': 1e-00}
         best_input_feat_data = train_input(input_feat_data - mean, iterate_feat, adam, config, 600)
         best_input_feat_data += mean
         fullOutPath = resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".png"
-        deprocess_image(best_input_feat_data[0], fullOutPath)
+        deprocess_image(fullOutPath, best_input_feat_data[0])
 
         current_iter += 1
 

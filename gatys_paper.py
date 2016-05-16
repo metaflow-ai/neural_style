@@ -125,6 +125,6 @@ for idx, train_loss_feat in enumerate(train_losses_feat):
                 prefix = str(current_iter).zfill(4)
                 suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
                 fullOutPath = resultsDir + '/' + prefix + '_gatys_paper_feat' + layer_name_feat + suffix + '.png'
-                deprocess_image(best_input_data[0], fullOutPath)
+                deprocess_image(fullOutPath, best_input_data[0])
 
                 current_iter += 1
