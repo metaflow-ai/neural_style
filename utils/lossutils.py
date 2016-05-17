@@ -91,7 +91,7 @@ def train_weights(train_input_data, st_model, train_iteratee, batch=32, cv_input
         if cross_val_iteratee != None and not np.isinf(cv_loss) and not np.isnan(cv_loss):
             losses['cv_loss'].append(cv_loss)
 
-        if i % 1 == 0:
+        if i % 10 == 0:
             if cross_val_iteratee != None:
                 print(str(i) + ':', training_loss, cv_loss)
             else:

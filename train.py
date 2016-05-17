@@ -74,14 +74,14 @@ outputs = [c11, c12, c21, c22, c31, c32, c33, c41, c42, c43, c51, c52, c53]
 outputs_layer_style = [c12, c22, c33, c43, c53]
 outputs_layer_feat = [c33]
 
-predict_style = K.function([st_model.input, K.learning_phase()], outputs_layer_style)
-predict_feat = K.function([st_model.input, K.learning_phase()], outputs_layer_feat)
+predict_style = K.function([st_model.output], outputs_layer_style)
+predict_feat = K.function([st_model.output], outputs_layer_feat)
 
 print('Creating training labels')
-style_labels = predict_style([X_style - mean, False])
-train_feat_labels = predict_feat([X_train - mean, False])
+style_labels = predict_style([X_style])
+train_feat_labels = predict_feat([X_train])
 if len(X_cv):
-    cv_feat_labels = predict_feat([X_cv - mean, False])
+    cv_feat_labels = predict_feat([X_cv])
 
 print('preparing loss functions')
 loss_style1_2 = grams_frobenius_error(style_labels[0], outputs_layer_style[0])
@@ -106,7 +106,7 @@ for gamma in [1e-05, 1e-06, 1e-07]:
     train_loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
         + beta * train_loss_feat \
         + gamma * reg_TV
-    adam = Adam(lr=1e-02)
+    adam = Adam(lr=1e-03)
     updates = adam.get_updates(trainable_weights, st_model.constraints, train_loss)
     train_iteratee = K.function([st_model.input, K.learning_phase()], [train_loss], updates=updates)
 
@@ -125,7 +125,7 @@ for gamma in [1e-05, 1e-06, 1e-07]:
         train_iteratee, 
         cv_input_data=X_cv, 
         cross_val_iteratee=cross_val_iteratee, 
-        max_iter=10
+        max_iter=1500
     )
 
     prefix = str(current_iter).zfill(4)
