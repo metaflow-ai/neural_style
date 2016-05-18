@@ -36,9 +36,6 @@ print('Loading style_transfer')
 stWeights = dir + '/models/results/st/st_vangogh_weights.hdf5'
 st_model = style_transfer(stWeights)
 
-print('Compiling st_model')
-st_model.compile(loss='mean_squared_error', optimizer='sgd')
-
 print('Predicting')
 # time it
 start= time.clock()
