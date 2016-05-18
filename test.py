@@ -24,7 +24,7 @@ batch = 4
 
 print('Loading test set')
 # X_test = load_images(testDir, size=(height, width))
-X_test = load_images(dir + '/data/overfit', size=(height, width))
+X_test = load_images(dir + '/data/overfit/cv', size=(height, width))
 print(X_test.shape)
 
 print('Loading mean')
@@ -36,13 +36,17 @@ print('Loading style_transfer')
 stWeights = dir + '/models/results/st/st_vangogh_weights.hdf5'
 st_model = style_transfer(stWeights)
 
+predict = K.function([st_model.input, K.learning_phase()], st_model.output)
+
 print('Predicting')
 # time it
 start= time.clock()
-for i in range(1):
-    results = st_model.predict(X_test)
+num_loop = 1
+for i in range(num_loop):
+    # results = st_model.predict(X_test) # Equivalent to predict([X_test, False])
+    results = predict([X_test, True])
 end= time.clock()
-time= (end-start)/1
+time= (end-start)/(len(X_test) * num_loop)
 print("time taken on 1 average call:", time)
 
 
@@ -51,10 +55,6 @@ for idx, im in enumerate(results):
     prefix = str(idx).zfill(4)
     fullOutPath = outputDir + '/' + prefix + ".png"
     deprocess_image(fullOutPath, im)
-    fullOutPath = outputDir + '/' + prefix + "_mean.png"
-    deprocess_image(fullOutPath, im + mean[0])
-    fullOutPath = outputDir + '/' + prefix + "_imsave.png"
-    deprocess_image(fullOutPath, im, False)
 
     fullOriPath = outputDir + '/' + prefix + "_ori.png"
     deprocess_image(fullOriPath, X_test[idx], False)

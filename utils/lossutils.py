@@ -83,7 +83,7 @@ def train_weights(train_input_data, st_model, train_iteratee, batch=32, cv_input
         training_loss = train_iteratee([train_input_data, True])
         training_loss = training_loss[0].item(0)
         if cross_val_iteratee != None:
-            cv_loss = cross_val_iteratee([cv_input_data, False])
+            cv_loss = cross_val_iteratee([cv_input_data, True])
             cv_loss = cv_loss[0].item(0)
 
         losses['training_loss'].append(training_loss)

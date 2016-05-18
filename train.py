@@ -39,8 +39,7 @@ print("X_style shape: " + str(X_style.shape))
 
 print('Loading cross validation images')
 # X_cv = load_images(dataDir + '/val')
-# X_cv = np.array([load_image(dataDir + '/overfit/001.jpg', (height, width))])
-X_cv = load_images(dataDir + '/overfit', size=(height, width))
+X_cv = load_images(dataDir + '/overfit/cv', size=(height, width))
 print("X_cv shape: " + str(X_cv.shape))
 
 print('Loading mean')
