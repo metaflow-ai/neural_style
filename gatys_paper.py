@@ -38,7 +38,7 @@ modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
 model = VGG_16_headless_5(modelWeights, trainable=False, poolingType='average')
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 input_layer = model.input
-layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_3', 'conv_4_3', 'conv_5_3']
+layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_3', 'conv_4_3']# , 'conv_5_3']
 outputs_layer = [layer_dict[name].output for name in layers_used]
 
 print('Creating training labels')
@@ -52,17 +52,21 @@ train_loss_style1_2 = frobenius_error(grams(train_style_labels[0]), grams(output
 train_loss_style2_2 = frobenius_error(grams(train_style_labels[1]), grams(outputs_layer[1]))
 train_loss_style3_3 = frobenius_error(grams(train_style_labels[2]), grams(outputs_layer[2]))
 train_loss_style4_3 = frobenius_error(grams(train_style_labels[3]), grams(outputs_layer[3]))
-train_loss_style5_3 = frobenius_error(grams(train_style_labels[4]), grams(outputs_layer[4]))
+
+# This input allow too much large shape of style inputs project back on the final output
+# train_loss_style5_3 = frobenius_error(grams(train_style_labels[4]), grams(outputs_layer[4]))
 
 train_losses_feat = []
 # The first two are too "clean" for human perception
 # train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[0], outputs_layer[0]))
-# train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[1], outputs_layer[1]))
+
+# This one tends to be too "clean"
+train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[1], outputs_layer[1]))
 
 train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[2], outputs_layer[2]))
 
-# This one tend to be much more dreamy
-train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[3], outputs_layer[3]))
+# This one tends to be too much more dreamy
+# train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[3], outputs_layer[3]))
 
 # The Fifth layer doesn't hold enough information to rebuild the structure of the photo
 # train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[4], outputs_layer[4]))
@@ -74,21 +78,18 @@ input_data = create_noise_tensor(3, 256, 256)
 current_iter = 1
 
 for idx, train_loss_feat in enumerate(train_losses_feat):
-    layer_name_feat = layers_used[idx + 2]
+    layer_name_feat = layers_used[idx + 1]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
-    if layer_name_feat == 'conv_3_3':
-        alphas = [1e-02, 1e-03]
-    else:
-        alphas = [3e-05, 1e-05, 1e-06]
-    for alpha in alphas:
+    for alpha in [1e-01, 1e-02, 1e-03]:
         for beta in [1.]:
-            for gamma in [3e-04, 1e-04, 1e-05]:
+            for gamma in [1e-02, 1e-04, 1e-06]:
                 if alpha == beta and alpha != 1:
                     continue
                 print("alpha, beta, gamma:", alpha, beta, gamma)
 
                 print('Compiling model')
-                train_loss = alpha * 0.2 * (train_loss_style1_2 + train_loss_style2_2 + train_loss_style3_3 + train_loss_style4_3 + train_loss_style5_3) \
+                # Based on previous analysis, the conv_2_2/conv_3_3 layers have
+                train_loss = alpha * 0.25 * (train_loss_style1_2 + train_loss_style2_2 + train_loss_style3_3 + 1e03 * train_loss_style4_3) \
                     + beta * train_loss_feat \
                     + gamma * reg_TV
 
