@@ -1,24 +1,23 @@
 import numpy as np 
 
 from keras import backend as K
+from theano import tensor as T
 
 ########
 # Losses
 ########
-def grams_frobenius_error(y_true, y_pred):
-    samples_true, c, h, w = y_true.shape
-    samples_preds = y_pred.shape[0]
+def grams(X):
+    samples_true, c, h, w = X.shape
+    X_reshaped = K.reshape(X, (samples_true, c, h * w))
+    X_T = K.permute_dimensions(X_reshaped, (0, 2, 1))
+    # We're force to use Theano here and not Keras 
+    # (Keras don't provide access to this function)
+    X_gram = T.batched_dot(X_reshaped, X_T) / (2. * c * h * w)
 
-    # Compute the grams matrix
-    y_true_reshaped = K.reshape(y_true, (samples_true, c, h * w))
-    y_pred_reshaped = K.reshape(y_pred, (samples_preds, c, h * w))
-    y_true_T = K.permute_dimensions(y_true_reshaped, (0, 2, 1))
-    y_pred_T = K.permute_dimensions(y_pred_reshaped, (0, 2, 1))
-    y_true_grams = K.dot(y_true_reshaped, y_true_T) / (2. * c * h * w)
-    y_pred_grams = K.dot(y_pred_reshaped, y_pred_T) / (2. * c * h * w)
+    return X_gram
 
-    # Compute the frobenius norm
-    loss = K.sum(K.square(y_pred_grams - y_true_grams))
+def frobenius_error(y_true, y_pred):
+    loss = K.sum(K.square(y_pred - y_true))
 
     return loss
 

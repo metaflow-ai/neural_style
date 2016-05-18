@@ -22,7 +22,7 @@ X_train = load_image(dataDir + '/overfit/000.jpg')
 print("X_train shape:", X_train.shape)
 
 print('Loading Van Gogh')
-vanGoghPath = dataDir + '/paintings/vangogh.jpg'
+vanGoghPath = dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg'
 X_train_paint = np.array([load_image(vanGoghPath)])
 print("X_train_paint shape:", X_train_paint.shape)
 
@@ -54,7 +54,7 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
         predict_feat = K.function([input_layer], [out_feat])
         out_feat_labels = predict_feat([X_train - mean])
 
-        loss_style = grams_frobenius_error(out_style_labels[0], out_style)
+        loss_style = frobenius_error(grams(out_style_labels[0]), grams(out_style))
         loss_feat = squared_normalized_euclidian_error(out_feat_labels[0], out_feat)
         reg_TV = total_variation_error(input_layer)
 

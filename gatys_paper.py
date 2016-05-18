@@ -18,13 +18,13 @@ if not os.path.isdir(resultsDir):
 dataDir = dir + '/data'
 
 print('Loading train images')
-X_train_style = np.array([load_image(dataDir + '/paintings/vangogh.jpg')])
+X_train_style = np.array([load_image(dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg')])
 X_train = load_image(dataDir + '/overfit/000.jpg')
 print("X_train shape:", X_train.shape)
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading cross validation images')
-X_cv_style = np.array([load_image(dataDir + '/paintings/vangogh.jpg')])
+X_cv_style = np.array([load_image(dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg')])
 X_cv = load_image(dataDir + '/overfit/001.jpg')
 
 
@@ -52,11 +52,11 @@ if len(X_cv_style):
     cv_feat_labels = predict([X_cv - mean])
 
 print('Preparing training loss functions')
-train_loss_style1_2 = grams_frobenius_error(train_style_labels[0], outputs_layer[0])
-train_loss_style2_2 = grams_frobenius_error(train_style_labels[1], outputs_layer[1])
-train_loss_style3_3 = grams_frobenius_error(train_style_labels[2], outputs_layer[2])
-train_loss_style4_3 = grams_frobenius_error(train_style_labels[3], outputs_layer[3])
-train_loss_style5_3 = grams_frobenius_error(train_style_labels[4], outputs_layer[4])
+train_loss_style1_2 = frobenius_error(grams(train_style_labels[0]), grams(outputs_layer[0]))
+train_loss_style2_2 = frobenius_error(grams(train_style_labels[1]), grams(outputs_layer[1]))
+train_loss_style3_3 = frobenius_error(grams(train_style_labels[2]), grams(outputs_layer[2]))
+train_loss_style4_3 = frobenius_error(grams(train_style_labels[3]), grams(outputs_layer[3]))
+train_loss_style5_3 = frobenius_error(grams(train_style_labels[4]), grams(outputs_layer[4]))
 
 train_losses_feat = []
 # The first two are too "clean" for human perception
@@ -73,11 +73,11 @@ train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[3]
 
 if len(X_cv_style):
     print('Preparing cross validation loss functions')
-    cv_loss_style1_2 = grams_frobenius_error(cv_style_labels[0], outputs_layer[0])
-    cv_loss_style2_2 = grams_frobenius_error(cv_style_labels[1], outputs_layer[1])
-    cv_loss_style3_3 = grams_frobenius_error(cv_style_labels[2], outputs_layer[2])
-    cv_loss_style4_3 = grams_frobenius_error(cv_style_labels[3], outputs_layer[3])
-    cv_loss_style5_3 = grams_frobenius_error(cv_style_labels[4], outputs_layer[4])
+    cv_loss_style1_2 = frobenius_error(grams(cv_style_labels[0]), grams(outputs_layer[0]))
+    cv_loss_style2_2 = frobenius_error(grams(cv_style_labels[1]), grams(outputs_layer[1]))
+    cv_loss_style3_3 = frobenius_error(grams(cv_style_labels[2]), grams(outputs_layer[2]))
+    cv_loss_style4_3 = frobenius_error(grams(cv_style_labels[3]), grams(outputs_layer[3]))
+    cv_loss_style5_3 = frobenius_error(grams(cv_style_labels[4]), grams(outputs_layer[4]))
 
     cv_losses_feat = []
     cv_losses_feat.append(squared_normalized_euclidian_error(cv_feat_labels[2], outputs_layer[2]))

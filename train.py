@@ -29,9 +29,8 @@ height = 256
 input_shape = (channels, width, height)
 batch = 4
 
-
 print('Loading train images')
-painting_fullpath = dataDir + '/paintings/vangogh.jpg'
+painting_fullpath = dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg'
 X_style = np.array([load_image(painting_fullpath, (height, width))])
 # X_train = load_images(trainDir, size=(height, width))
 X_train = load_images(dataDir + '/overfit', size=(height, width))
@@ -84,11 +83,11 @@ if len(X_cv):
     cv_feat_labels = predict_feat([X_cv])
 
 print('preparing loss functions')
-loss_style1_2 = grams_frobenius_error(style_labels[0], outputs_layer_style[0])
-loss_style2_2 = grams_frobenius_error(style_labels[1], outputs_layer_style[1])
-loss_style3_3 = grams_frobenius_error(style_labels[2], outputs_layer_style[2])
-loss_style4_3 = grams_frobenius_error(style_labels[3], outputs_layer_style[3])
-loss_style5_3 = grams_frobenius_error(style_labels[4], outputs_layer_style[4])
+loss_style1_2 = frobenius_error(grams(style_labels[0]), grams(outputs_layer_style[0]))
+loss_style2_2 = frobenius_error(grams(style_labels[1]), grams(outputs_layer_style[1]))
+loss_style3_3 = frobenius_error(grams(style_labels[2]), grams(outputs_layer_style[2]))
+loss_style4_3 = frobenius_error(grams(style_labels[3]), grams(outputs_layer_style[3]))
+loss_style5_3 = frobenius_error(grams(style_labels[4]), grams(outputs_layer_style[4]))
 train_loss_feat = squared_normalized_euclidian_error(train_feat_labels[0], outputs_layer_feat[0])
 if len(X_cv):
     cv_loss_feat = squared_normalized_euclidian_error(cv_feat_labels[0], outputs_layer_feat[0])

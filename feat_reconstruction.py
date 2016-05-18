@@ -22,7 +22,7 @@ X_train = load_image(dataDir + '/overfit/000.jpg')
 print("X_train shape:", X_train.shape)
 
 print('Loading Van Gogh')
-vanGoghPath = dataDir + '/paintings/vangogh.jpg'
+vanGoghPath = dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg'
 X_train_paint = np.array([load_image(vanGoghPath)])
 print("X_train_paint shape:", X_train_paint.shape)
 
@@ -57,7 +57,7 @@ for layer_name in layers_names:
 
     for gamma in [1e-04, 1e-06, 0.]:
         print('Compiling VGG headless 1 for ' + layer_name + ' style reconstruction')
-        loss_style = grams_frobenius_error(out_plabels[0], out)
+        loss_style = frobenius_error(grams(out_plabels[0]), grams(out))
         grads_style = K.gradients(loss_style + gamma * reg_TV, input_layer)[0]
         grads_style /= (K.sqrt(K.mean(K.square(grads_style))) + K.epsilon())
         iterate_style = K.function([input_layer], [loss_style, grads_style])

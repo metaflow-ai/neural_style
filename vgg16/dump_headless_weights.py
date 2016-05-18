@@ -1,9 +1,10 @@
-import os
-from utils.copy_seq_weights import copySeqWeights
-from model_headless import *
-
+import os, sys
 
 dir = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(dir + '/..')
+
+from utils.copy_seq_weights import copySeqWeights
+from model_headless import *
 
 model = VGG_16_headless_5()
 copySeqWeights(model, 

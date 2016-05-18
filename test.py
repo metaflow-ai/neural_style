@@ -4,10 +4,12 @@ import png
 
 from models.style_transfer import style_transfer
 
+from vgg16.model import VGG_16_mean 
 from utils.imutils import *
 from utils.lossutils import *
 
 dir = os.path.dirname(os.path.realpath(__file__))
+vgg16Dir = dir + '/vgg16'
 dataDir = dir + '/data'
 outputDir = dataDir + '/output'
 if not os.path.isdir(outputDir): 
@@ -24,6 +26,11 @@ print('Loading test set')
 # X_test = load_images(testDir, size=(height, width))
 X_test = load_images(dir + '/data/overfit', size=(height, width))
 print(X_test.shape)
+
+print('Loading mean')
+meanPath = vgg16Dir + '/vgg-16_mean.npy'
+mean = VGG_16_mean(path=meanPath)
+print("mean shape: " + str(mean.shape))
 
 print('Loading style_transfer')
 stWeights = dir + '/models/results/st/st_vangogh_weights.hdf5'
@@ -47,6 +54,8 @@ for idx, im in enumerate(results):
     prefix = str(idx).zfill(4)
     fullOutPath = outputDir + '/' + prefix + ".png"
     deprocess_image(fullOutPath, im)
+    fullOutPath = outputDir + '/' + prefix + "_mean.png"
+    deprocess_image(fullOutPath, im + mean[0])
     fullOutPath = outputDir + '/' + prefix + "_imsave.png"
     deprocess_image(fullOutPath, im, False)
 

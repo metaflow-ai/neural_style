@@ -1,18 +1,19 @@
 import numpy as np
-
 import os, re
 import h5py
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
 
 from scipy import misc, ndimage as ndi
 from scipy.misc import imsave
-import matplotlib.pyplot as plt
 
 from keras.backend.common import _FLOATX
 
 def load_images(absPath, limit=-1, size=None, dim_ordering='th'):
     ims = []
-    files = [f for f in os.listdir(absPath) if len(re.findall('\.(jpg|png)$', f))]
-    for idx, filename in enumerate(files):
+    filenames = [f for f in os.listdir(absPath) if len(re.findall('\.(jpg|png)$', f))]
+    for idx, filename in enumerate(filenames):
         if limit > 0 and idx >= limit:
             break
         fullpath = absPath + '/' + filename
@@ -22,7 +23,7 @@ def load_images(absPath, limit=-1, size=None, dim_ordering='th'):
     return np.array(ims)
 
 def load_image(fullpath, size=None, dim_ordering='th'):
-    im = ndi.imread(fullpath, mode='RGB')
+    im = ndi.imread(fullpath, mode='RGB') # height, width, channels
     if size != None:
         im = misc.imresize(im, size)
     if dim_ordering == 'th':
