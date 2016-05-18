@@ -55,20 +55,28 @@ def dump_as_hdf5(data, fullpath):
         hf.create_dataset('dataset_1', data=data)
 
 def plot_losses(losses, dir='', prefix='', suffix=''):
-    plt.plot(losses['training_loss'])
-    plt.title('Training loss')
-    plt.xlabel('Iteration number')
-    plt.ylabel('Loss value')
-    plt.savefig(dir + '/' + prefix + 'training_loss' + suffix + '.png')
-    plt.clf()
-
     if len(losses['cv_loss']):
+        plt.subplot(2, 1, 1)
+        plt.plot(losses['training_loss'])
+        plt.title('Training loss')
+        plt.xlabel('Iteration number')
+        plt.ylabel('Loss value')
+
+        plt.subplot(2, 1, 2)
         plt.plot(losses['cv_loss'])
         plt.title('Cross validation loss')
         plt.xlabel('Iteration number')
         plt.ylabel('Loss value')
         plt.savefig(dir + '/' + prefix + 'cv_loss' + suffix + '.png')
         plt.clf()
+    else:
+        plt.plot(losses['training_loss'])
+        plt.title('Training loss')
+        plt.xlabel('Iteration number')
+        plt.ylabel('Loss value')
+        plt.savefig(dir + '/' + prefix + 'training_loss' + suffix + '.png')
+        plt.clf()
+
 
 # dir = os.path.dirname(os.path.realpath(__file__))
 # resultsDir = dir + '/../models/results/vgg16'

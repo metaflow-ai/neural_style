@@ -29,10 +29,6 @@ X_train = load_image(dataDir + '/overfit/000.jpg', size=(height, width))
 print("X_train shape:", X_train.shape)
 print("X_train_style shape:", X_train_style.shape)
 
-print('Loading cross validation images')
-X_cv_style = np.array([load_image(dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg', size=(height, width))])
-X_cv = load_image(dataDir + '/overfit/001.jpg', size=(height, width))
-
 print('Loading mean')
 meanPath = vgg16Dir + '/vgg-16_mean.npy'
 mean = VGG_16_mean(path=meanPath)
@@ -50,11 +46,6 @@ predict = K.function([input_layer], outputs_layer)
 
 train_style_labels = predict([X_train_style - mean])
 train_feat_labels = predict([X_train - mean])
-
-if len(X_cv_style):
-    print('Creating cross validation labels')
-    cv_style_labels = predict([X_cv_style - mean])
-    cv_feat_labels = predict([X_cv - mean])
 
 print('Preparing training loss functions')
 train_loss_style1_2 = frobenius_error(grams(train_style_labels[0]), grams(outputs_layer[0]))
@@ -76,18 +67,6 @@ train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[3]
 # The Fifth layer doesn't hold enough information to rebuild the structure of the photo
 # train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[4], outputs_layer[4]))
 
-if len(X_cv_style):
-    print('Preparing cross validation loss functions')
-    cv_loss_style1_2 = frobenius_error(grams(cv_style_labels[0]), grams(outputs_layer[0]))
-    cv_loss_style2_2 = frobenius_error(grams(cv_style_labels[1]), grams(outputs_layer[1]))
-    cv_loss_style3_3 = frobenius_error(grams(cv_style_labels[2]), grams(outputs_layer[2]))
-    cv_loss_style4_3 = frobenius_error(grams(cv_style_labels[3]), grams(outputs_layer[3]))
-    cv_loss_style5_3 = frobenius_error(grams(cv_style_labels[4]), grams(outputs_layer[4]))
-
-    cv_losses_feat = []
-    cv_losses_feat.append(squared_normalized_euclidian_error(cv_feat_labels[2], outputs_layer[2]))
-    cv_losses_feat.append(squared_normalized_euclidian_error(cv_feat_labels[3], outputs_layer[3]))
-
 reg_TV = total_variation_error(input_layer)
 
 print('Building white noise images')
@@ -96,12 +75,14 @@ current_iter = 1
 
 for idx, train_loss_feat in enumerate(train_losses_feat):
     layer_name_feat = layers_used[idx + 2]
-    if len(X_cv_style):
-        cv_loss_feat = cv_losses_feat[idx]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
-    for alpha in [1e-02, 1e-05]: # one for layer conv_3_3 and one for layer conv_4_3
+    if layer_name_feat == 'conv_3_3':
+        alphas = [1e-02, 1e-03]
+    else:
+        alphas = [3e-05, 1e-05, 1e-06]
+    for alpha in alphas:
         for beta in [1.]:
-            for gamma in [1e-03, 1e-04, 1e-05]:
+            for gamma in [3e-04, 1e-04, 1e-05]:
                 if alpha == beta and alpha != 1:
                     continue
                 print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -115,16 +96,8 @@ for idx, train_loss_feat in enumerate(train_losses_feat):
                 grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
                 train_iteratee = K.function([input_layer], [train_loss, grads])
 
-                if len(X_cv_style):
-                    cv_loss = alpha * 0.2 * (cv_loss_style1_2 + cv_loss_style2_2 + cv_loss_style3_3 + cv_loss_style4_3 + cv_loss_style5_3) \
-                        + beta * cv_loss_feat \
-                        + gamma * reg_TV
-                    cross_val_iteratee = K.function([input_layer], [cv_loss])
-                else:
-                    cross_val_iteratee = None
-
                 config = {'learning_rate': 1e-01}
-                best_input_data, losses = train_input(input_data - mean, train_iteratee, adam, config, cross_val_iteratee, max_iter=4000)
+                best_input_data, losses = train_input(input_data - mean, train_iteratee, adam, config, max_iter=2000)
 
                 prefix = str(current_iter).zfill(4)
                 suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
