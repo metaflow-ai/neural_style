@@ -17,15 +17,15 @@ if not os.path.isdir(outputDir):
 testDir = dataDir + '/test'
 
 channels = 3
-width = 256
-height = 256
+width = 600
+height = 600
 input_shape = (channels, width, height)
 batch = 4
 
 print('Loading test set')
 # X_test = load_images(testDir, size=(height, width))
-X_test = load_images(dir + '/data/overfit/cv', size=(height, width))
-print(X_test.shape)
+X_test = load_images(dir + '/data/overfit', limit=40, size=(height, width))
+print('X_test.shape: ' + str(X_test.shape))
 
 print('Loading mean')
 meanPath = vgg16Dir + '/vgg-16_mean.npy'
@@ -46,8 +46,8 @@ for i in range(num_loop):
     # results = st_model.predict(X_test) # Equivalent to predict([X_test, False])
     results = predict([X_test, True])
 end= time.clock()
-time= (end-start)/(len(X_test) * num_loop)
-print("time taken on 1 average call:", time)
+time= (end-start)/(X_test.shape[0] * num_loop)
+print("time taken on 1 average call: " + str(time))
 
 
 print('Dumping results')

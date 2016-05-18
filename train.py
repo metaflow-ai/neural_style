@@ -53,12 +53,11 @@ vgg_model = VGG_16_headless_5(modelWeights, input_shape=input_shape, trainable=F
 
 print('Loading style_transfer model')
 stWeightsFullpath = dir + '/models/st_vangogh_weights.hdf5'
+st_model = style_transfer(input_shape=input_shape)
+init_weights = st_model.get_weights()
 if os.path.isfile(stWeightsFullpath): 
     print("Loading weights")
-    st_model = style_transfer(stWeightsFullpath, input_shape=input_shape)
-else:
-    st_model = style_transfer(input_shape=input_shape)
-trainable_weights = collect_trainable_weights(st_model)
+    st_model = st_model.load_weights(stWeightsFullpath)
 
 print('Building full model')
 l_output = Lambda(lambda x: x - mean, output_shape=lambda shape: shape)(st_model.output)
@@ -91,52 +90,53 @@ train_loss_feat = squared_normalized_euclidian_error(train_feat_labels[0], outpu
 if len(X_cv):
     cv_loss_feat = squared_normalized_euclidian_error(cv_feat_labels[0], outputs_layer_feat[0])
 
-reg_TV = total_variation_error(st_model.output)
+reg_TV = total_variation_error(l_output)
 
 print('Compiling VGG headless 5')
-alpha = 1e-02
-beta = 1.
 current_iter = 0
-for gamma in [1e-05, 1e-06, 1e-07]:
-    print("alpha, beta, gamma:", alpha, beta, gamma)
+for alpha in [1e-02, 1e-03, 1e-04]:
+    for beta in [1.]:
+        for gamma in [1e-03, 1e-04, 1e-05]:
+            print("alpha, beta, gamma:", alpha, beta, gamma)
 
-    print('Preparing train iteratee function')
-    train_loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
-        + beta * train_loss_feat \
-        + gamma * reg_TV
-    adam = Adam(lr=1e-03)
-    updates = adam.get_updates(trainable_weights, st_model.constraints, train_loss)
-    train_iteratee = K.function([st_model.input, K.learning_phase()], [train_loss], updates=updates)
+            st_model.set_weights(init_weights)
+            print('Preparing train iteratee function')
+            train_loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
+                + beta * train_loss_feat \
+                + gamma * reg_TV
+            adam = Adam(lr=1e-03)
+            updates = adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
+            train_iteratee = K.function([st_model.input, K.learning_phase()], [train_loss], updates=updates)
 
-    if len(X_cv):
-        print('Preparing cv iteratee function')
-        cv_loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
-            + beta * cv_loss_feat \
-            + gamma * reg_TV
-        cross_val_iteratee = K.function([st_model.input, K.learning_phase()], [cv_loss])
-    else:
-        cross_val_iteratee = None
+            if len(X_cv):
+                print('Preparing cv iteratee function')
+                cv_loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
+                    + beta * cv_loss_feat \
+                    + gamma * reg_TV
+                cross_val_iteratee = K.function([st_model.input, K.learning_phase()], [cv_loss])
+            else:
+                cross_val_iteratee = None
 
-    best_trainable_weights, losses = train_weights(
-        X_train, 
-        st_model, 
-        train_iteratee, 
-        cv_input_data=X_cv, 
-        cross_val_iteratee=cross_val_iteratee, 
-        max_iter=1500
-    )
+            best_trainable_weights, losses = train_weights(
+                X_train, 
+                st_model, 
+                train_iteratee, 
+                cv_input_data=X_cv, 
+                cross_val_iteratee=cross_val_iteratee, 
+                max_iter=1500
+            )
 
-    prefix = str(current_iter).zfill(4)
-    suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
-    st_weights = resultsDir + '/' + prefix + 'st_vangogh_weights' + suffix + '.hdf5'
-    fullpath_loss = resultsDir + '/' + prefix + 'st_vangogh_loss' + suffix + '.json'
-    current_iter += 1
+            prefix = str(current_iter).zfill(4)
+            suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
+            st_weights = resultsDir + '/' + prefix + 'st_vangogh_weights' + suffix + '.hdf5'
+            fullpath_loss = resultsDir + '/' + prefix + 'st_vangogh_loss' + suffix + '.json'
+            current_iter += 1
 
-    print("Saving final data")
-    st_model.set_weights(best_trainable_weights)
-    st_model.save_weights(st_weights, overwrite=True)
+            print("Saving final data")
+            st_model.set_weights(best_trainable_weights)
+            st_model.save_weights(st_weights, overwrite=True)
 
-    with open(fullpath_loss, 'w') as outfile:
-        json.dump(losses, outfile)  
+            with open(fullpath_loss, 'w') as outfile:
+                json.dump(losses, outfile)  
 
-    plot_losses(losses, resultsDir, prefix, suffix)
+            plot_losses(losses, resultsDir, prefix, suffix)

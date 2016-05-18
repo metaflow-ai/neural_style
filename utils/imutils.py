@@ -10,7 +10,7 @@ from scipy.misc import imsave
 
 from keras.backend.common import _FLOATX
 
-def load_images(absPath, limit=-1, size=None, dim_ordering='th'):
+def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='th'):
     ims = []
     filenames = [f for f in os.listdir(absPath) if len(re.findall('\.(jpg|png)$', f))]
     for idx, filename in enumerate(filenames):
@@ -60,12 +60,15 @@ def plot_losses(losses, dir='', prefix='', suffix=''):
     plt.xlabel('Iteration number')
     plt.ylabel('Loss value')
     plt.savefig(dir + '/' + prefix + 'training_loss' + suffix + '.png')
+    plt.clf()
 
-    plt.plot(losses['cv_loss'])
-    plt.title('Cross validation loss')
-    plt.xlabel('Iteration number')
-    plt.ylabel('Loss value')
-    plt.savefig(dir + '/' + prefix + 'cv_loss' + suffix + '.png')
+    if len(losses['cv_loss']):
+        plt.plot(losses['cv_loss'])
+        plt.title('Cross validation loss')
+        plt.xlabel('Iteration number')
+        plt.ylabel('Loss value')
+        plt.savefig(dir + '/' + prefix + 'cv_loss' + suffix + '.png')
+        plt.clf()
 
 # dir = os.path.dirname(os.path.realpath(__file__))
 # resultsDir = dir + '/../models/results/vgg16'

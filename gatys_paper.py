@@ -17,16 +17,21 @@ if not os.path.isdir(resultsDir):
     os.makedirs(resultsDir)
 dataDir = dir + '/data'
 
+channels = 3
+width = 256
+height = 256
+input_shape = (channels, width, height)
+batch = 4
+
 print('Loading train images')
-X_train_style = np.array([load_image(dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg')])
-X_train = load_image(dataDir + '/overfit/000.jpg')
+X_train_style = np.array([load_image(dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg', size=(height, width))])
+X_train = load_image(dataDir + '/overfit/000.jpg', size=(height, width))
 print("X_train shape:", X_train.shape)
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading cross validation images')
-X_cv_style = np.array([load_image(dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg')])
-X_cv = load_image(dataDir + '/overfit/001.jpg')
-
+X_cv_style = np.array([load_image(dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg', size=(height, width))])
+X_cv = load_image(dataDir + '/overfit/001.jpg', size=(height, width))
 
 print('Loading mean')
 meanPath = vgg16Dir + '/vgg-16_mean.npy'
@@ -96,7 +101,7 @@ for idx, train_loss_feat in enumerate(train_losses_feat):
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
     for alpha in [1e-02, 1e-05]: # one for layer conv_3_3 and one for layer conv_4_3
         for beta in [1.]:
-            for gamma in [1e-05, 1e-06, 1e-07]:
+            for gamma in [1e-03, 1e-04, 1e-05]:
                 if alpha == beta and alpha != 1:
                     continue
                 print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -119,12 +124,12 @@ for idx, train_loss_feat in enumerate(train_losses_feat):
                     cross_val_iteratee = None
 
                 config = {'learning_rate': 1e-01}
-                best_input_data = train_input(input_data - mean, train_iteratee, adam, config, 4000, cross_val_iteratee)
-                best_input_data += mean
+                best_input_data, losses = train_input(input_data - mean, train_iteratee, adam, config, cross_val_iteratee, max_iter=4000)
 
                 prefix = str(current_iter).zfill(4)
                 suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
                 fullOutPath = resultsDir + '/' + prefix + '_gatys_paper_feat' + layer_name_feat + suffix + '.png'
                 deprocess_image(fullOutPath, best_input_data[0])
+                plot_losses(losses, resultsDir, prefix, suffix)
 
                 current_iter += 1

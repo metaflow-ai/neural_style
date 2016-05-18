@@ -17,13 +17,19 @@ if not os.path.isdir(resultsDir):
     os.makedirs(resultsDir)
 dataDir = dir + '/data'
 
+channels = 3
+width = 256
+height = 256
+input_shape = (channels, width, height)
+batch = 4
+
 print('Loading a cat image')
-X_train = load_image(dataDir + '/overfit/000.jpg')
+X_train = np.array([load_image(dataDir + '/overfit/000.jpg', size=(height, width))])
 print("X_train shape:", X_train.shape)
 
 print('Loading Van Gogh')
 vanGoghPath = dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg'
-X_train_paint = np.array([load_image(vanGoghPath)])
+X_train_paint = np.array([load_image(vanGoghPath, size=(height, width))])
 print("X_train_paint shape:", X_train_paint.shape)
 
 print('Loading mean')
@@ -47,15 +53,15 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
     for idx_style, layer_name_style in enumerate(layers_names):
         print('Creating labels for feat ' + layer_name_feat + ' and style ' + layer_name_style)
         out_style = layer_dict[layer_name_style].output
-        predict_style = K.function([input_layer], [out_style])
+        predict_style = K.function([input_layer], out_style)
         out_style_labels = predict_style([X_train_paint - mean])
 
         out_feat = layer_dict[layer_name_feat].output
-        predict_feat = K.function([input_layer], [out_feat])
+        predict_feat = K.function([input_layer], out_feat)
         out_feat_labels = predict_feat([X_train - mean])
 
-        loss_style = frobenius_error(grams(out_style_labels[0]), grams(out_style))
-        loss_feat = squared_normalized_euclidian_error(out_feat_labels[0], out_feat)
+        loss_style = frobenius_error(grams(out_style_labels), grams(out_style))
+        loss_feat = squared_normalized_euclidian_error(out_feat_labels, out_feat)
         reg_TV = total_variation_error(input_layer)
 
         print('Compiling VGG headless 5 for feat ' + layer_name_feat + ' and style ' + layer_name_style)
@@ -64,7 +70,7 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
         # if alpha/beta <= 1e-04 we only see the picture
         for alpha in [1e02, 1., 1e-02, 1e-04]:
             for beta in [1.]:
-                for gamma in [1e-05, 1e-06]:
+                for gamma in [1e-03, 1e-04, 1e-05]:
                     if alpha == beta and alpha != 1:
                         continue
                     print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -76,12 +82,12 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
                     iterate = K.function([input_layer], [loss, grads])
 
                     config = {'learning_rate': 1e-00}
-                    best_input_data = train_input(input_data - mean, iterate, adam, config, 600)
-                    best_input_data += mean
+                    best_input_data, losses = train_input(input_data - mean, iterate, adam, config, max_iter=600)
 
                     prefix = str(current_iter).zfill(4)
                     suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
                     fullOutPath = resultsDir + '/' + prefix + '_gatys_st' + layer_name_style + '_feat' + layer_name_feat + suffix + ".png"
                     deprocess_image(fullOutPath, best_input_data[0])
+                    plot_losses(losses, resultsDir, prefix, suffix)
 
                     current_iter += 1
