@@ -68,7 +68,7 @@ c41, c42, c43,
 c51, c52, c53] = vgg_model(l_output)
 
 outputs = [c11, c12, c21, c22, c31, c32, c33, c41, c42, c43, c51, c52, c53]
-outputs_layer_style = [c12, c22, c33, c43, c53]
+outputs_layer_style = [c12, c22, c33, c43]
 outputs_layer_feat = [c33]
 
 predict_style = K.function([st_model.output], outputs_layer_style)
@@ -85,7 +85,6 @@ loss_style1_2 = frobenius_error(grams(style_labels[0]), grams(outputs_layer_styl
 loss_style2_2 = frobenius_error(grams(style_labels[1]), grams(outputs_layer_style[1]))
 loss_style3_3 = frobenius_error(grams(style_labels[2]), grams(outputs_layer_style[2]))
 loss_style4_3 = frobenius_error(grams(style_labels[3]), grams(outputs_layer_style[3]))
-loss_style5_3 = frobenius_error(grams(style_labels[4]), grams(outputs_layer_style[4]))
 train_loss_feat = squared_normalized_euclidian_error(train_feat_labels[0], outputs_layer_feat[0])
 if len(X_cv):
     cv_loss_feat = squared_normalized_euclidian_error(cv_feat_labels[0], outputs_layer_feat[0])
@@ -101,7 +100,7 @@ for alpha in [1e-02, 1e-03, 1e-04]:
 
             st_model.set_weights(init_weights)
             print('Preparing train iteratee function')
-            train_loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
+            train_loss = alpha * 0.25 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + 1e03 * loss_style4_3) \
                 + beta * train_loss_feat \
                 + gamma * reg_TV
             adam = Adam(lr=1e-03)
@@ -110,7 +109,7 @@ for alpha in [1e-02, 1e-03, 1e-04]:
 
             if len(X_cv):
                 print('Preparing cv iteratee function')
-                cv_loss = alpha * 0.2 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + loss_style4_3 + loss_style5_3) \
+                cv_loss = alpha * 0.25 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + 1e03 * loss_style4_3) \
                     + beta * cv_loss_feat \
                     + gamma * reg_TV
                 cross_val_iteratee = K.function([st_model.input, K.learning_phase()], [cv_loss])
