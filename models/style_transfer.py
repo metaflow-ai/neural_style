@@ -303,7 +303,7 @@ def style_transfer_3_3_only_small_double_stride(weights_path=None, input_shape=(
 
     return model
 
-def style_transfer_3_3_only_double_stride(weights_path=None, input_shape=(3, 600, 600)):
+def style_transfer_3_3_only_double_stride(weights_path=None, input_shape=(3, 256, 256)):
     input = Input(shape=input_shape, name='input', dtype='float32')
 
     # Downsampling
@@ -380,7 +380,7 @@ def style_transfer_3_3_only_double_stride(weights_path=None, input_shape=(3, 600
     bn71 = BatchNormalization(axis=1)(c71)
     a71 = Activation('relu')(bn71)
     
-    u81 = UpSampling2D(size=(3, 3))(a71)
+    u81 = UpSampling2D(size=(2, 2))(a71)
     c81 = Convolution2D(32, 3, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(u81)
     bn81 = BatchNormalization(axis=1)(c81)
@@ -397,7 +397,7 @@ def style_transfer_3_3_only_double_stride(weights_path=None, input_shape=(3, 600
 
     return model
 
-def style_transfer_3_3_only_double_stride_nobatchnorm(weights_path=None, input_shape=(3, 600, 600)):
+def style_transfer_3_3_only_double_stride_nobatchnorm(weights_path=None, input_shape=(3, 256, 256)):
     input = Input(shape=input_shape, name='input', dtype='float32')
 
     # Downsampling
@@ -460,7 +460,7 @@ def style_transfer_3_3_only_double_stride_nobatchnorm(weights_path=None, input_s
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(u71)
     a71 = Activation('relu')(c71)
     
-    u81 = UpSampling2D(size=(3, 3))(a71)
+    u81 = UpSampling2D(size=(2, 2))(a71)
     c81 = Convolution2D(32, 3, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(u81)
     a81 = Activation('relu')(c81)

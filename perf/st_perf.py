@@ -28,7 +28,7 @@ X_test = load_images(testDir, limit=10, size=(height, width))
 print('X_test.shape: ' + str(X_test.shape))
 
 
-model = style_transfer_3_3_only_double_stride()
+model = style_transfer_3_3_only_double_stride_nobatchnorm()
 plot_model(model, to_file=dir + '/model.png', show_shapes=True)
 total_params = 0
 for i in range(len(model.layers)):
