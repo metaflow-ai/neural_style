@@ -29,10 +29,10 @@ def squared_normalized_euclidian_error(y_true, y_pred):
 #######
 # Regularizer
 #######
-def total_variation_error(y, beta=1.):
+def total_variation_error(y, beta=1):
     a = K.square(y[:, :, 1:, :-1] - y[:, :, :-1, :-1])
     b = K.square(y[:, :, :-1, 1:] - y[:, :, :-1, :-1])
-    loss = K.sum(K.pow(a + b, beta / 2.))
+    loss = K.sum(K.pow(a + b, beta / 2))
 
     return loss
 
