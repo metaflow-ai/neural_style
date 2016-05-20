@@ -65,8 +65,9 @@ pred_style = [fm_c12, fm_c22, fm_c33, fm_c43]
 pred_feat = fm_c33
 
 print('Loading painting')
-suffix = "_ori.hdf5"
+# suffix = "_ori.hdf5"
 # suffix = "_600x600.hdf5"
+suffix = "_256x256.hdf5"
 painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suffix 
 with h5py.File(painting_fullpath, 'r') as f:
     y_styles = []

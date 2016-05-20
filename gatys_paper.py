@@ -37,7 +37,7 @@ modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
 model = VGG_16_headless_5(modelWeights, trainable=False, poolingType='average')
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 input_layer = model.input
-layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_3', 'conv_4_3']# , 'conv_5_3']
+layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_3', 'conv_4_3', 'conv_5_3']
 outputs_layer = [layer_dict[name].output for name in layers_used]
 
 print('Creating training labels')
@@ -45,25 +45,25 @@ predict = K.function([input_layer], outputs_layer)
 train_feat_labels = predict([X_train - mean])
 
 print('Loading painting')
-X_train_style = np.array([load_image(paintingsDir + '/van_gogh-starry_night_over_the_rhone.jpg', size=(height, width))])
-train_style_labels = predict([X_train_style - mean])
-y_styles = []
-y_styles.append(grams(train_style_labels[0]))
-y_styles.append(grams(train_style_labels[1]))
-y_styles.append(grams(train_style_labels[2]))
-y_styles.append(grams(train_style_labels[3]))
+# X_train_style = np.array([load_image(paintingsDir + '/van_gogh-starry_night_over_the_rhone.jpg', size=(height, width))])
+# train_style_labels = predict([X_train_style - mean])
+# y_styles = []
+# y_styles.append(grams(train_style_labels[0]))
+# y_styles.append(grams(train_style_labels[1]))
+# y_styles.append(grams(train_style_labels[2]))
+# y_styles.append(grams(train_style_labels[3]))
 
 # suffix = "_ori.hdf5"
-# # suffix = "_600x600.hdf5"
-# # suffix = "_256x256.hdf5"
-# painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suffix 
-# with h5py.File(painting_fullpath, 'r') as f:
-#     y_styles = []
-#     y_styles.append(f['conv_1_2'][()])
-#     y_styles.append(f['conv_2_2'][()])
-#     y_styles.append(f['conv_3_3'][()])
-#     y_styles.append(f['conv_4_3'][()])
-#     y_styles.append(f['conv_5_3'][()])
+# suffix = "_600x600.hdf5"
+suffix = "_256x256.hdf5"
+painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suffix 
+with h5py.File(painting_fullpath, 'r') as f:
+    y_styles = []
+    y_styles.append(f['conv_1_2'][()])
+    y_styles.append(f['conv_2_2'][()])
+    y_styles.append(f['conv_3_3'][()])
+    y_styles.append(f['conv_4_3'][()])
+    y_styles.append(f['conv_5_3'][()])
     
 
 print('Preparing training loss functions')

@@ -4,8 +4,10 @@ from scandir import scandir
 
 from keras import backend as K
 from keras.utils.generic_utils import Progbar
-from theano import tensor as T
-import tensorflow as tf
+if K._BACKEND == 'theano':
+    from theano import tensor as T
+else:
+    import tensorflow as tf
 
 from utils.imutils import *
 
