@@ -16,6 +16,7 @@ resultsDir = dir + '/models/results/vgg16'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
 dataDir = dir + '/data'
+paintingsDir = dataDir + '/paintings'
 
 channels = 3
 width = 256
@@ -24,10 +25,8 @@ input_shape = (channels, width, height)
 batch = 4
 
 print('Loading train images')
-X_train_style = np.array([load_image(dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg', size=(height, width))])
-X_train = load_image(dataDir + '/overfit/000.jpg', size=(height, width))
+X_train = np.array([load_image(dataDir + '/overfit/000.jpg', size=(height, width))])
 print("X_train shape:", X_train.shape)
-print("X_train_style shape:", X_train_style.shape)
 
 print('Loading mean')
 meanPath = vgg16Dir + '/vgg-16_mean.npy'
@@ -43,15 +42,35 @@ outputs_layer = [layer_dict[name].output for name in layers_used]
 
 print('Creating training labels')
 predict = K.function([input_layer], outputs_layer)
-
-train_style_labels = predict([X_train_style - mean])
 train_feat_labels = predict([X_train - mean])
 
+print('Loading painting')
+X_train_style = np.array([load_image(paintingsDir + '/van_gogh-starry_night_over_the_rhone.jpg', size=(height, width))])
+train_style_labels = predict([X_train_style - mean])
+y_styles = []
+y_styles.append(grams(train_style_labels[0]))
+y_styles.append(grams(train_style_labels[1]))
+y_styles.append(grams(train_style_labels[2]))
+y_styles.append(grams(train_style_labels[3]))
+
+# suffix = "_ori.hdf5"
+# # suffix = "_600x600.hdf5"
+# # suffix = "_256x256.hdf5"
+# painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suffix 
+# with h5py.File(painting_fullpath, 'r') as f:
+#     y_styles = []
+#     y_styles.append(f['conv_1_2'][()])
+#     y_styles.append(f['conv_2_2'][()])
+#     y_styles.append(f['conv_3_3'][()])
+#     y_styles.append(f['conv_4_3'][()])
+#     y_styles.append(f['conv_5_3'][()])
+    
+
 print('Preparing training loss functions')
-train_loss_style1_2 = frobenius_error(grams(train_style_labels[0]), grams(outputs_layer[0]))
-train_loss_style2_2 = frobenius_error(grams(train_style_labels[1]), grams(outputs_layer[1]))
-train_loss_style3_3 = frobenius_error(grams(train_style_labels[2]), grams(outputs_layer[2]))
-train_loss_style4_3 = frobenius_error(grams(train_style_labels[3]), grams(outputs_layer[3]))
+train_loss_style1_2 = frobenius_error(y_styles[0], grams(outputs_layer[0]))
+train_loss_style2_2 = frobenius_error(y_styles[1], grams(outputs_layer[1]))
+train_loss_style3_3 = frobenius_error(y_styles[2], grams(outputs_layer[2]))
+train_loss_style4_3 = frobenius_error(y_styles[3], grams(outputs_layer[3]))
 
 # This input allow too much large shape of style inputs project back on the final output
 # train_loss_style5_3 = frobenius_error(grams(train_style_labels[4]), grams(outputs_layer[4]))
@@ -74,13 +93,13 @@ train_losses_feat.append(squared_normalized_euclidian_error(train_feat_labels[2]
 reg_TV = total_variation_error(input_layer)
 
 print('Building white noise images')
-input_data = create_noise_tensor(3, 256, 256)
+input_data = create_noise_tensor(channels, height, width)
 current_iter = 1
 
 for idx, train_loss_feat in enumerate(train_losses_feat):
     layer_name_feat = layers_used[idx + 1]
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
-    for alpha in [1e-01, 1e-02, 1e-03]:
+    for alpha in [1e-02, 1e-03]:
         for beta in [1.]:
             for gamma in [1e-02, 1e-04, 1e-06]:
                 if alpha == beta and alpha != 1:

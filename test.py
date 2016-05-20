@@ -2,7 +2,7 @@ import numpy as np
 import os, time
 import png
 
-from models.style_transfer import style_transfer
+from models.style_transfer import *
 
 from vgg16.model import VGG_16_mean 
 from utils.imutils import *
@@ -41,8 +41,8 @@ for weights_filename in weights_filenames:
     predict = K.function([st_model.input, K.learning_phase()], st_model.output)
 
     print('Predicting')
-    results = st_model.predict(X_test) # Equivalent to predict([X_test, False])
-    # results = predict([X_test, True])
+    # results = st_model.predict(X_test) # Equivalent to predict([X_test, False])
+    results = predict([X_test, True])
 
     print('Dumping results')
     for idx, im in enumerate(results):

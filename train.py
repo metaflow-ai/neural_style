@@ -22,34 +22,14 @@ if not os.path.isdir(resultsDir):
     os.makedirs(resultsDir)
 dataDir = dir + '/data'
 trainDir = dataDir + '/train'
+paintingsDir = dataDir + '/paintings'
 
 channels = 3
 width = 256
 height = 256
 input_shape = (channels, width, height)
-batch = 4
-
-print('Loading train images')
-painting_fullpath = dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg'
-X_style = np.array([load_image(painting_fullpath, (height, width))])
-# X_train = load_images(trainDir, size=(height, width))
-X_train = load_images(dataDir + '/overfit', size=(height, width))
-print("X_train shape: " + str(X_train.shape))
-print("X_style shape: " + str(X_style.shape))
-
-print('Loading cross validation images')
-# X_cv = load_images(dataDir + '/val')
-X_cv = load_images(dataDir + '/overfit/cv', size=(height, width))
-print("X_cv shape: " + str(X_cv.shape))
-
-print('Loading mean')
-meanPath = vgg16Dir + '/vgg-16_mean.npy'
-mean = VGG_16_mean(path=meanPath)
-print("mean shape: " + str(mean.shape))
-
-print('Loading VGG headless 5 model')
-modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
-vgg_model = VGG_16_headless_5(modelWeights, input_shape=input_shape, trainable=False, poolingType='average')
+batch_size = 4
+max_number_of_epoch = 2
 
 print('Loading style_transfer model')
 stWeightsFullpath = dir + '/models/st_vangogh_weights.hdf5'
@@ -59,39 +39,53 @@ if os.path.isfile(stWeightsFullpath):
     print("Loading weights")
     st_model = st_model.load_weights(stWeightsFullpath)
 
-print('Building full model')
-l_output = Lambda(lambda x: x - mean, output_shape=lambda shape: shape)(st_model.output)
+print('Loading VGG headless 5 model')
+modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
+vgg_model = VGG_16_headless_5(modelWeights, input_shape=input_shape, trainable=False, poolingType='average')
+meanPath = vgg16Dir + '/vgg-16_mean.npy'
+mean = VGG_16_mean(path=meanPath)
+
+print('Loading label generator')
 [c11, c12, 
 c21, c22, 
 c31, c32, c33, 
 c41, c42, c43,
-c51, c52, c53] = vgg_model(l_output)
+c51, c52, c53] = vgg_model(st_model.input)
+y_feat = c33
 
-outputs = [c11, c12, c21, c22, c31, c32, c33, c41, c42, c43, c51, c52, c53]
-outputs_layer_style = [c12, c22, c33, c43]
-outputs_layer_feat = [c33]
+print('Building full model')
+l_output = Lambda(lambda x: x - mean, output_shape=lambda shape: shape)(st_model.output)
+[fm_c11, fm_c12, 
+fm_c21, fm_c22, 
+fm_c31, fm_c32, fm_c33, 
+fm_c41, fm_c42, fm_c43,
+fm_c51, fm_c52, fm_c53] = vgg_model(l_output)
+preds = [fm_c11, fm_c12, fm_c21, fm_c22, fm_c31, fm_c32, fm_c33, fm_c41, fm_c42, fm_c43, fm_c51, fm_c52, fm_c53]
+pred_style = [fm_c12, fm_c22, fm_c33, fm_c43]
+pred_feat = fm_c33
 
-predict_style = K.function([st_model.output], outputs_layer_style)
-predict_feat = K.function([st_model.output], outputs_layer_feat)
+print('Loading painting')
+suffix = "_ori.hdf5"
+# suffix = "_600x600.hdf5"
+painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suffix 
+with h5py.File(painting_fullpath, 'r') as f:
+    y_styles = []
+    y_styles.append(f['conv_1_2'][()])
+    y_styles.append(f['conv_2_2'][()])
+    y_styles.append(f['conv_3_3'][()])
+    y_styles.append(f['conv_4_3'][()])
+    y_styles.append(f['conv_5_3'][()])
 
-print('Creating training labels')
-style_labels = predict_style([X_style])
-train_feat_labels = predict_feat([X_train])
-if len(X_cv):
-    cv_feat_labels = predict_feat([X_cv])
 
 print('preparing loss functions')
-loss_style1_2 = frobenius_error(grams(style_labels[0]), grams(outputs_layer_style[0]))
-loss_style2_2 = frobenius_error(grams(style_labels[1]), grams(outputs_layer_style[1]))
-loss_style3_3 = frobenius_error(grams(style_labels[2]), grams(outputs_layer_style[2]))
-loss_style4_3 = frobenius_error(grams(style_labels[3]), grams(outputs_layer_style[3]))
-train_loss_feat = squared_normalized_euclidian_error(train_feat_labels[0], outputs_layer_feat[0])
-if len(X_cv):
-    cv_loss_feat = squared_normalized_euclidian_error(cv_feat_labels[0], outputs_layer_feat[0])
-
+loss_style1_2 = frobenius_error(y_styles[0], grams(pred_style[0]))
+loss_style2_2 = frobenius_error(y_styles[1], grams(pred_style[1]))
+loss_style3_3 = frobenius_error(y_styles[2], grams(pred_style[2]))
+loss_style4_3 = frobenius_error(y_styles[3], grams(pred_style[3]))
+train_loss_feat = squared_normalized_euclidian_error(y_feat, pred_feat)
 reg_TV = total_variation_error(l_output)
 
-print('Compiling VGG headless 5')
+print('Iterating over hyper parameters')
 current_iter = 0
 for alpha in [1e-02, 1e-03, 1e-04]:
     for beta in [1.]:
@@ -99,30 +93,46 @@ for alpha in [1e-02, 1e-03, 1e-04]:
             print("alpha, beta, gamma:", alpha, beta, gamma)
 
             st_model.set_weights(init_weights)
-            print('Preparing train iteratee function')
+            print('Compiling train loss')
             train_loss = alpha * 0.25 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + 1e03 * loss_style4_3) \
                 + beta * train_loss_feat \
                 + gamma * reg_TV
+
+            print('Compiling Adam update')
             adam = Adam(lr=1e-03)
             updates = adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
+
+            print('Compiling train function')
             train_iteratee = K.function([st_model.input, K.learning_phase()], [train_loss], updates=updates)
 
-            if len(X_cv):
-                print('Preparing cv iteratee function')
-                cv_loss = alpha * 0.25 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + 1e03 * loss_style4_3) \
-                    + beta * cv_loss_feat \
-                    + gamma * reg_TV
-                cross_val_iteratee = K.function([st_model.input, K.learning_phase()], [cv_loss])
-            else:
-                cross_val_iteratee = None
+            print('Starting training')
+# X_train = load_images(trainDir, size=(height, width))
+# print("X_train shape: " + str(X_train.shape))
+
+
+# print('Loading cross validation images')
+# # X_cv = load_images(dataDir + '/val')
+# X_cv = load_images(dataDir + '/overfit/cv', size=(height, width))
+# print("X_cv shape: " + str(X_cv.shape))
+
+
+#             if len(X_cv):
+#                 print('Preparing cv iteratee function')
+#                 cv_loss = alpha * 0.25 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + 1e03 * loss_style4_3) \
+#                     + beta * cv_loss_feat \
+#                     + gamma * reg_TV
+#                 cross_val_iteratee = K.function([st_model.input, K.learning_phase()], [cv_loss])
+#             else:
+#                 cross_val_iteratee = None
 
             best_trainable_weights, losses = train_weights(
-                X_train, 
+                trainDir,
+                (height, width),
                 st_model, 
                 train_iteratee, 
-                cv_input_data=X_cv, 
-                cross_val_iteratee=cross_val_iteratee, 
-                max_iter=1500
+                cv_input_dir=None, 
+                max_iter=1500,
+                batch_size=4
             )
 
             prefix = str(current_iter).zfill(4)
