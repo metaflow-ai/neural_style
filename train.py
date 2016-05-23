@@ -1,6 +1,4 @@
-import os
-import numpy as np
-import json
+import os, json, h5py
 
 from keras import backend as K
 from keras.engine.training import collect_trainable_weights
@@ -9,11 +7,13 @@ from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot
 
 from vgg16.model import VGG_16_mean 
-from vgg16.model_headless import *
-from models.style_transfer import *
+from vgg16.model_headless import VGG_16_headless_5
+from models.style_transfer import style_transfer
 
-from utils.imutils import *
-from utils.lossutils import *
+from utils.imutils import plot_losses
+from utils.lossutils import (grams, frobenius_error, 
+                    squared_normalized_euclidian_error, train_weights,
+                    total_variation_error)
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg16Dir = dir + '/vgg16'
@@ -88,9 +88,9 @@ reg_TV = total_variation_error(l_output)
 
 print('Iterating over hyper parameters')
 current_iter = 0
-for alpha in [1e-02, 1e-03, 1e-04]:
+for alpha in [1e-03, 1e-04]:
     for beta in [1.]:
-        for gamma in [1e-03, 1e-04, 1e-05]:
+        for gamma in [1e-04, 1e-05]:
             print("alpha, beta, gamma:", alpha, beta, gamma)
 
             st_model.set_weights(init_weights)

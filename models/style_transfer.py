@@ -1,9 +1,12 @@
+from keras import backend as K
 from keras.engine import merge
 from keras.layers.convolutional import (Convolution2D, UpSampling2D)
 from keras.layers.normalization import BatchNormalization
 from keras.layers.core import Activation
 from keras.layers import Input
 from keras.models import Model
+
+from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
 
 
 def style_transfer(weights_path=None, input_shape=(3, 256, 256)):
@@ -77,16 +80,14 @@ def style_transfer(weights_path=None, input_shape=(3, 256, 256)):
     out6 = merge([out5, bn62], mode='sum')
 
     # This is not a deconvolution (but might be close enough)
-    u71 = UpSampling2D(size=(2, 2))(out6)
-    c71 = Convolution2D(64, 3, 3, 
-        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(u71)
-    bn71 = BatchNormalization(axis=1)(c71)
+    ct71 = ConvolutionTranspose2D(64, 3, 3, 
+        init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(out6)
+    bn71 = BatchNormalization(axis=1)(ct71)
     a71 = Activation('relu')(bn71)
     
-    u81 = UpSampling2D(size=(2, 2))(a71)
-    c81 = Convolution2D(32, 3, 3, 
-        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(u81)
-    bn81 = BatchNormalization(axis=1)(c81)
+    ct81 = ConvolutionTranspose2D(32, 3, 3, 
+        init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(a71)
+    bn81 = BatchNormalization(axis=1)(ct81)
     a81 = Activation('relu')(bn81)    
 
     c91 = Convolution2D(3, 9, 9, 

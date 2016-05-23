@@ -102,16 +102,18 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
     files = [input_dir + '/' + name for name in os.listdir(input_dir) if len(re.findall('\.(jpg|png)$', name))]
     
     while need_more_training:
-        print('Epoch %d, max_iter %d' % (current_epoch + 1, max_iter))
-        progbar = Progbar(len(files))
+        print('Epoch %d, max_iter %d, total_files %d' % (current_epoch + 1, max_iter, len(files)))
+        progbar = Progbar(max_iter)
         progbar_values = []
 
         ims = []
         current_batch = 0
-        for dirEntry in scandir(input_dir):
-            if not len(re.findall('\.(jpg|png)$', dirEntry.path)):
-                continue
-            im = load_image(dirEntry.path, size=size)
+        # for dirEntry in scandir(input_dir):
+        #     if not len(re.findall('\.(jpg|png)$', dirEntry.path)):
+        #         continue
+        #     fullpath = dirEntry.path
+        for idx, fullpath in enumerate(files):
+            im = load_image(fullpath, size=size)
             ims.append(im)
             if len(ims) >= batch_size:
                 ims = np.array(ims)
@@ -125,7 +127,7 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
                     losses['cv_loss'].append(cv_loss)
                     progbar_values.append(('cv_loss', cv_loss))
 
-                progbar.update((current_batch + 1)* batch_size, progbar_values)
+                progbar.update(current_iter, progbar_values)
 
                 if training_loss < losses['best_loss']:
                     losses['best_loss'] = training_loss
@@ -133,6 +135,7 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
                     wait = 0
                 else:
                     if wait >= 100 and current_iter > max_iter / 2:
+                        need_more_training = False
                         break
                     wait +=1
 

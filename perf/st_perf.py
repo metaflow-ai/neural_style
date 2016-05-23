@@ -3,13 +3,10 @@ import os, sys, time
 dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/..')
 
-import numpy as np
 from keras.utils.visualize_util import plot as plot_model
-from models.style_transfer import *
-
-from vgg16.model import VGG_16_mean 
-from utils.imutils import *
-from utils.lossutils import *
+from models.style_transfer import style_transfer
+ 
+from utils.imutils import load_images
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg16Dir = dir + '/../vgg16'
@@ -24,11 +21,11 @@ input_shape = (channels, width, height)
 batch = 4
 
 print('Loading test set')
-X_test = load_images(testDir, limit=10, size=(height, width))
+X_test = load_images(testDir, limit=4, size=(height, width))
 print('X_test.shape: ' + str(X_test.shape))
 
 
-model = style_transfer_3_3_only_double_stride_nobatchnorm()
+model = style_transfer(input_shape=input_shape)
 plot_model(model, to_file=dir + '/model.png', show_shapes=True)
 total_params = 0
 for i in range(len(model.layers)):
