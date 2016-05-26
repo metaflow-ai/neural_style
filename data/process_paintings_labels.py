@@ -8,25 +8,21 @@ import h5py, gc
 
 from keras import backend as K
 
-from vgg16.model import VGG_16_mean 
-from vgg16.model_headless import *
+from vgg19.model_headless import *
 
 from utils.imutils import *
 from utils.lossutils import *
 
-vgg16Dir = dir + '/../vgg16'
-modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
+dir = os.path.dirname(os.path.realpath(__file__))
+vgg19Dir = dir + '/../vgg19'
+modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
 paintingsDir = dir + '/paintings'
-meanPath = vgg16Dir + '/vgg-16_mean.npy'
 
-print('Loading VGG headless 5')
-mean = VGG_16_mean(path=meanPath)
-
-model = VGG_16_headless_5(modelWeights, trainable=False, poolingType='average')
+model = VGG_19_headless_5(modelWeights, trainable=False, poolingType='average')
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 input_layer = model.input
-layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_3', 'conv_4_3', 'conv_5_3']
-outputs_layer = [layer_dict[name].output for name in layers_used]
+layers_used = ['conv_1_1', 'conv_1_2', 'conv_2_1', 'conv_2_2', 'conv_3_1', 'conv_3_4', 'conv_4_1', 'conv_4_4', 'conv_5_1', 'conv_5_4']
+outputs_layer = [grams(layer_dict[name].output) for name in layers_used]
 
 predict = K.function([input_layer], outputs_layer)
 
@@ -34,47 +30,49 @@ print('Loading train images')
 paintings_fullpath = dir + '/paintings'
 filenames = [f for f in os.listdir(paintings_fullpath) if len(re.findall('\.(jpg|png)$', f))]
 for filename in filenames:
-    print(paintings_fullpath + '/' + filename)
-    painting = np.array([load_image(paintings_fullpath + '/' + filename)])
+    print('Loading: ' + paintings_fullpath + '/' + filename)
+    painting = np.array([load_image(paintings_fullpath + '/' + filename, size=None, dim_ordering='th')])
     print("painting shape: " + str(painting.shape))
 
     print('Creating training labels')
-    painting_label = predict([painting - mean])
-    painting_label = map(lambda X: grams(X).eval(), painting_label)
+    painting_label = predict([painting])
 
     print('Saving data')
     f = h5py.File(paintings_fullpath + "/" + filename.split('.')[0] + '_ori.hdf5', "w")
     for idx, layer_name in enumerate(layers_used):
+        print(painting_label[idx].shape)
         f.create_dataset(layer_name, data=painting_label[idx])
     f.close()
 
     gc.collect()
 
-    painting = np.array([load_image(paintings_fullpath + '/' + filename, size=(600, 600))])
+    print('Loading: ' + paintings_fullpath + '/' + filename)
+    painting = np.array([load_image(paintings_fullpath + '/' + filename, size=(600, 600), dim_ordering='th')])
     print("painting shape: " + str(painting.shape))
 
     print('Creating training labels')
-    painting_label = predict([painting - mean])
-    painting_label = map(lambda X: grams(X).eval(), painting_label)
+    painting_label = predict([painting])
 
     print('Saving data')
-    f = h5py.File(paintings_fullpath + "/" + filename.split('.')[0] + '_600x600.hdf5', "w")
+    f = h5py.File(paintings_fullpath + "/" + filename.split('.')[0] + '_ori.hdf5', "w")
     for idx, layer_name in enumerate(layers_used):
+        print(painting_label[idx].shape)
         f.create_dataset(layer_name, data=painting_label[idx])
     f.close()
 
     gc.collect()
 
-    painting = np.array([load_image(paintings_fullpath + '/' + filename, size=(256, 256))])
+    print('Loading: ' + paintings_fullpath + '/' + filename)
+    painting = np.array([load_image(paintings_fullpath + '/' + filename, size=(256, 256), dim_ordering='th')])
     print("painting shape: " + str(painting.shape))
 
     print('Creating training labels')
-    painting_label = predict([painting - mean])
-    painting_label = map(lambda X: grams(X).eval(), painting_label)
+    painting_label = predict([painting])
 
     print('Saving data')
-    f = h5py.File(paintings_fullpath + "/" + filename.split('.')[0] + '_256x256.hdf5', "w")
+    f = h5py.File(paintings_fullpath + "/" + filename.split('.')[0] + '_ori.hdf5', "w")
     for idx, layer_name in enumerate(layers_used):
+        print(painting_label[idx].shape)
         f.create_dataset(layer_name, data=painting_label[idx])
     f.close()
 

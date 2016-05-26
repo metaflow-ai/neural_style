@@ -3,16 +3,16 @@ import numpy as np
 
 from keras import backend as K
 
-from vgg16.model import VGG_16_mean 
-from vgg16.model_headless import *
+from vgg19.model import VGG_19_mean 
+from vgg19.model_headless import *
 
 from utils.imutils import *
 from utils.lossutils import *
 from utils.optimizers import adam
 
 dir = os.path.dirname(os.path.realpath(__file__))
-vgg16Dir = dir + '/vgg16'
-resultsDir = dir + '/models/results/vgg16'
+vgg19Dir = dir + '/vgg19'
+resultsDir = dir + '/models/results/vgg19'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
 dataDir = dir + '/data'
@@ -24,24 +24,17 @@ input_shape = (channels, width, height)
 batch = 4
 
 print('Loading a cat image')
-X_train = np.array([load_image(dataDir + '/overfit/000.jpg', size=(height, width))])
+X_train = load_images(dataDir + '/overfit', size=(height, width), limit=1, dim_ordering='th')
 print("X_train shape:", X_train.shape)
 
-print('Loading Van Gogh')
-vanGoghPath = dataDir + '/paintings/van_gogh-starry_night_over_the_rhone.jpg'
-X_train_paint = np.array([load_image(vanGoghPath, size=(height, width))])
-print("X_train_paint shape:", X_train_paint.shape)
-
-print('Loading mean')
-meanPath = vgg16Dir + '/vgg-16_mean.npy'
-mean = VGG_16_mean(path=meanPath)
+print('Loading painting')
+X_train_style = load_images(dataDir + '/paintings', size=(height, width), limit=1, dim_ordering='th')
+print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
-modelWeights = vgg16Dir + '/vgg-16_headless_5_weights.hdf5'
-model = VGG_16_headless_5(modelWeights, trainable=False, poolingType='average')
-layer_dict = dict([(layer.name, layer) for layer in model.layers])
-layers_names = [l for l in layer_dict if len(re.findall('conv_', l))]
-layers_names.sort()
+modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
+model = VGG_19_headless_5(modelWeights, trainable=False)
+layer_dict, layers_names = get_layer_data(model, 'conv_')
 
 input_layer = layer_dict['input'].input
 
@@ -54,14 +47,14 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
         print('Creating labels for feat ' + layer_name_feat + ' and style ' + layer_name_style)
         out_style = layer_dict[layer_name_style].output
         predict_style = K.function([input_layer], out_style)
-        out_style_labels = predict_style([X_train_paint - mean])
+        out_style_labels = predict_style([X_train_style])
 
         out_feat = layer_dict[layer_name_feat].output
         predict_feat = K.function([input_layer], out_feat)
-        out_feat_labels = predict_feat([X_train - mean])
+        out_feat_labels = predict_feat([X_train])
 
         loss_style = frobenius_error(grams(out_style_labels), grams(out_style))
-        loss_feat = squared_normalized_euclidian_error(out_feat_labels, out_feat)
+        loss_feat = squared_normalized_frobenius_error(out_feat_labels, out_feat)
         reg_TV = total_variation_error(input_layer)
 
         print('Compiling VGG headless 5 for feat ' + layer_name_feat + ' and style ' + layer_name_style)
@@ -82,12 +75,12 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
                     iterate = K.function([input_layer], [loss, grads])
 
                     config = {'learning_rate': 1e-00}
-                    best_input_data, losses = train_input(input_data - mean, iterate, adam, config, max_iter=600)
+                    best_input_data, losses = train_input(input_data, iterate, adam, config, max_iter=600)
 
                     prefix = str(current_iter).zfill(4)
                     suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
                     fullOutPath = resultsDir + '/' + prefix + '_gatys_st' + layer_name_style + '_feat' + layer_name_feat + suffix + ".png"
-                    deprocess_image(fullOutPath, best_input_data[0])
+                    deprocess(fullOutPath, best_input_data[0])
                     plot_losses(losses, resultsDir, prefix, suffix)
 
                     current_iter += 1

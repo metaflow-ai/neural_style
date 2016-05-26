@@ -14,8 +14,13 @@ from utils.imutils import *
 ########
 # Losses
 ########
-def grams(X):
-    if K._BACKEND == 'theano':
+def grams(X, dim_ordering='th'):
+    if dim_ordering =='tf':
+        X = K.permute_dimensions(X, (0, 3, 1, 2))
+
+    if isinstance(X, (np.ndarray)):
+        samples, c, h, w = X.shape 
+    elif K._BACKEND == 'theano':
         samples, c, h, w = K.shape(X)
     else:
         try:
@@ -26,9 +31,10 @@ def grams(X):
     X_reshaped = K.reshape(X, (-1, c, h * w))
     X_T = K.permute_dimensions(X_reshaped, (0, 2, 1))
     if K._BACKEND == 'theano':
-        X_gram = T.batched_dot(X_reshaped, X_T) / (2. * c * h * w)
+        X_gram = T.batched_dot(X_reshaped, X_T)
     else:
-        X_gram = tf.batch_matmul(X_reshaped, X_T) / (2. * c * h * w)
+        X_gram = tf.batch_matmul(X_reshaped, X_T)
+    X_gram /= c * h * w
 
     return X_gram
 
@@ -37,10 +43,20 @@ def frobenius_error(y_true, y_pred):
 
     return loss
 
-def squared_normalized_euclidian_error(y_true, y_pred):
-    loss = K.mean(K.square(y_pred - y_true) / 2.) 
+def squared_normalized_frobenius_error(y_true, y_pred):
+    loss = K.mean(K.square(y_pred - y_true)) 
 
     return loss
+
+def load_y_styles(painting_fullpath, layers_name):
+    y_styles = []
+    with h5py.File(painting_fullpath, 'r') as f:
+        for name in layers_name:
+            y_styles.append(f[name][()])
+
+    return y_styles
+
+
 
 #######
 # Regularizer
@@ -54,7 +70,10 @@ def total_variation_error(y, beta=1):
         samples, c, h, w = K.int_shape(y)
         a = K.square(y[:, :, 1:, :w-1] - y[:, :, :h-1, :w-1])
         b = K.square(y[:, :, :h-1, 1:] - y[:, :, :h-1, :w-1])
-    loss = K.sum(K.pow(a + b, beta / 2))
+    if beta == 2:
+        loss = K.sum(a + b) / beta
+    else:
+        loss = K.sum(K.pow(a + b, beta/2.)) / beta
 
     return loss
 
@@ -69,13 +88,17 @@ def train_input(input_data, train_iteratee, optimizer, config={}, max_iter=2000)
     progbar = Progbar(max_iter)
     progbar_values = []
     for i in range(max_iter):
-        training_loss, grads_val = train_iteratee([input_data])
-        training_loss = training_loss.item(0)
+        data = train_iteratee([input_data])
+        training_loss = data[0].item(0)
+        grads_val = data[1]
         input_data, config = optimizer(input_data, grads_val, config)
 
         losses['training_loss'].append(training_loss)
         progbar_values.append(('training_loss', training_loss))
-
+        for idx, loss in enumerate(data):
+            if idx < 2:
+                continue
+            progbar_values.append(('loss' + str(idx), loss))
         progbar.update(i + 1, progbar_values)
 
         if training_loss < losses['best_loss']:

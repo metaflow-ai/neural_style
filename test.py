@@ -4,12 +4,12 @@ import png
 
 from models.style_transfer import *
 
-from vgg16.model import VGG_16_mean 
+from vgg19.model import VGG_19_mean 
 from utils.imutils import *
 from utils.lossutils import *
 
 dir = os.path.dirname(os.path.realpath(__file__))
-vgg16Dir = dir + '/vgg16'
+vgg19Dir = dir + '/vgg19'
 resultsDir = dir + '/models/results/st2'
 dataDir = dir + '/data'
 outputDir = dataDir + '/output'
@@ -28,8 +28,8 @@ X_test = load_images(testDir, limit=4, size=(height, width))
 print('X_test.shape: ' + str(X_test.shape))
 
 print('Loading mean')
-meanPath = vgg16Dir + '/vgg-16_mean.npy'
-mean = VGG_16_mean(path=meanPath)
+meanPath = vgg19Dir + '/vgg-16_mean.npy'
+mean = VGG_19_mean(path=meanPath)
 print("mean shape: " + str(mean.shape))
 
 weights_filenames = [f for f in os.listdir(resultsDir) if len(re.findall('.*st.*weights.*\.hdf5$', f))]
@@ -48,9 +48,9 @@ for weights_filename in weights_filenames:
     for idx, im in enumerate(results):
         prefix = str(current_iter).zfill(4)
         fullOutPath = outputDir + '/' + prefix + "_" + str(idx) + ".png"
-        deprocess_image(fullOutPath, im)
+        deprocess(fullOutPath, im)
 
         # fullOriPath = outputDir + '/' + prefix + "_ori.png"
-        # deprocess_image(fullOriPath, X_test[idx], False)
+        # deprocess(fullOriPath, X_test[idx], False)
 
         current_iter += 1

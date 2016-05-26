@@ -9,7 +9,7 @@ from models.style_transfer import style_transfer
 from utils.imutils import load_images
 
 dir = os.path.dirname(os.path.realpath(__file__))
-vgg16Dir = dir + '/../vgg16'
+vgg19Dir = dir + '/../vgg19'
 resultsDir = dir + '/../models/results/st2'
 dataDir = dir + '/../data'
 testDir = dataDir + '/test'
