@@ -17,8 +17,8 @@ dataDir = dir + '/data'
 paintingsDir = dataDir + '/paintings'
 
 channels = 3
-width = 256
-height = 256
+width = 512
+height = 512
 input_shape = (channels, width, height)
 batch = 4
 
@@ -94,7 +94,8 @@ for idx, feat_output in enumerate(feat_outputs_layer):
                 prefix = str(current_iter).zfill(4)
                 suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
                 fullOutPath = resultsDir + '/' + prefix + '_gatys_paper_feat' + layer_name_feat + suffix + '.png'
-                deprocess(fullOutPath, best_input_data[0])
+                dump_as_hdf5(resultsDir + '/' + prefix + '_gatys_paper_feat' + layer_name_feat + suffix + ".hdf5", best_input_data[0])
+                save_image(fullOutPath, deprocess(best_input_data[0], dim_ordering='th'))
                 plot_losses(losses, resultsDir, prefix, suffix)
 
                 current_iter += 1

@@ -90,7 +90,7 @@ for layer_name in layers_names:
         config = {'learning_rate': 1e-00}
         best_input_feat_data, feat_losses = train_input(input_data, iterate_feat, adam, config, max_iter=600)
         fullOutPath = resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".png"
-        dump_as_hdf5(resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".hdf5", best_input_style_data[0])
+        dump_as_hdf5(resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".hdf5", best_input_feat_data[0])
         save_image(fullOutPath, deprocess(best_input_feat_data[0], dim_ordering='th'))
         plot_losses(feat_losses, resultsDir, prefix + '_feat', suffix)
 
