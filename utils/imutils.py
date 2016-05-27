@@ -5,10 +5,10 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
-from scipy import misc, ndimage as ndi
+from scipy import misc
 from scipy.misc import imsave
 
-from keras.backend.common import _FLOATX
+from keras import backend as K
 
 from vgg19.model import VGG_19_mean 
 
@@ -34,6 +34,7 @@ def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf'):
     for idx, filename in enumerate(filenames):
         if limit > 0 and idx >= limit:
             break
+        
         fullpath = absPath + '/' + filename
         im = load_image(fullpath, size, dim_ordering)
         ims.append(im)
@@ -41,6 +42,7 @@ def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf'):
     return np.array(ims)
 
 def load_image(fullpath, size=(600, 600), dim_ordering='tf'):
+    print('Loading ' + fullpath)
     # VGG needs BGR data
     im = misc.imread(fullpath, mode='RGB') # height, width, channels
     im = preprocess(im, size)
@@ -53,7 +55,7 @@ def load_image(fullpath, size=(600, 600), dim_ordering='tf'):
 # im should be in RGB order
 # dim_ordering: How "im" is ordered
 def preprocess(im, size=None, dim_ordering='tf'):
-    im = im.copy().astype(_FLOATX)
+    im = im.copy().astype(K.floatx())
     
     if dim_ordering == 'th': # 'th' dim_ordering: [channels, height, width] 
         # tf order
@@ -133,13 +135,13 @@ def dump_as_hdf5(fullpath, data):
 def plot_losses(losses, dir='', prefix='', suffix=''):
     plt.clf()
     if len(losses['cv_loss']):
-        axes = plt.subplot(2, 1, 1)
+        plt.subplot(2, 1, 1)
         plt.plot(losses['training_loss'])
         plt.title('Training loss')
         plt.xlabel('Iteration number')
         plt.ylabel('Loss value')
 
-        axes = plt.subplot(2, 1, 2)
+        plt.subplot(2, 1, 2)
         plt.plot(losses['cv_loss'])
         plt.title('Cross validation loss')
         plt.xlabel('Iteration number')

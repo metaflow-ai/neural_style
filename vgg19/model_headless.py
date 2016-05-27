@@ -1,12 +1,13 @@
 import re 
 
+from keras import backend as K
 from keras.layers.convolutional import (Convolution2D, MaxPooling2D, AveragePooling2D,
                                         ZeroPadding2D)
 from keras.layers import Input
 from keras.models import Model
 
 def VGG_19_headless_5(weights_path=None, input_shape=(3, 256, 256), trainable=False, poolingType='max'):
-    input = Input(shape=input_shape, name='input', dtype='float32')
+    input = Input(shape=input_shape, name='input', dtype=K.floatx())
 
     zp11 = ZeroPadding2D((1, 1), trainable=trainable)(input)
     c11 = Convolution2D(64, 3, 3, activation='relu', trainable=trainable, name="conv_1_1")(zp11)

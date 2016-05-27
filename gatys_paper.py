@@ -6,7 +6,11 @@ from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
 from utils.imutils import *
 from utils.lossutils import *
-from utils.optimizers import adam
+
+optimizer = 'lbfgs'
+if optimizer == 'lbfgs':
+    K.set_floatx('float64') # scipy needs float64 to use lbfgs
+
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
@@ -59,8 +63,9 @@ train_loss_style5_4 = frobenius_error(y_styles[4], grams(style_outputs_layer[4])
 reg_TV = total_variation_error(input_layer, 2)
 
 print('Building white noise images')
-input_data = preprocess(create_noise_tensor(height, width, channels)).transpose(0, 3, 1, 2)
+input_data = create_noise_tensor(height, width, channels).transpose(0, 3, 1, 2).astype(K.floatx())
 
+print('Using optimizer: ' + optimizer)
 current_iter = 1
 for idx, feat_output in enumerate(feat_outputs_layer):
     if idx != 3:
@@ -89,7 +94,7 @@ for idx, feat_output in enumerate(feat_outputs_layer):
                 train_iteratee = K.function([input_layer], [train_loss, grads, train_loss_style1_2, train_loss_style2_2, train_loss_style3_4, train_loss_style4_4, train_loss_style5_4, train_loss_feat])
 
                 config = {'learning_rate': 1e-01}
-                best_input_data, losses = train_input(input_data, train_iteratee, adam, config, max_iter=2000)
+                best_input_data, losses = train_input(input_data, train_iteratee, optimizer, config, max_iter=2000)
 
                 prefix = str(current_iter).zfill(4)
                 suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
@@ -99,3 +104,49 @@ for idx, feat_output in enumerate(feat_outputs_layer):
                 plot_losses(losses, resultsDir, prefix, suffix)
 
                 current_iter += 1
+
+# Iteration 50 / 3000
+# Content 1 loss: 3226485.625000
+# Style 1 loss: 39559.396362
+# Style 2 loss: 10792833.593750 
+# Style 3 loss: 5803062.500000  
+# Style 4 loss: 323124450.000000
+# Style 5 loss: 32399.188232
+# Total loss: 343018790.303345  
+
+# Iteration 3000 / 3000   
+# Content 1 loss: 5821123.125000
+# Style 1 loss: 6668.415070
+# Style 2 loss: 299653.906250   
+# Style 3 loss: 56700.866699
+# Style 4 loss: 1037099.707031  
+# Style 5 loss: 5111.179733
+# Total loss: 7226357.199783
+
+# Lbfgs
+# Iteration 50 / 1000
+#   Content 1 loss: 4663373.750000
+#   Style 1 loss: 9212.595367
+#   Style 2 loss: 312963.330078   
+#   Style 3 loss: 330140.673828   
+#   Style 4 loss: 2972260.156250  
+#   Style 5 loss: 14337.231445
+#   Total loss: 8302287.736969
+
+# Iteration 1000 / 1000   128x128
+# Content 1 loss: 2897667.812500
+# Style 1 loss: 396.964931
+# Style 2 loss: 13595.199585
+# Style 3 loss: 52363.897705
+# Style 4 loss: 1150498.828125  
+# Style 5 loss: 15163.168335
+# Total loss: 4129685.871181
+
+# Iteration 1000 / 1000   512x512
+#   Content 1 loss: 937079.453125 
+#   Style 1 loss: 304.119968
+#   Style 2 loss: 5736.891937
+#   Style 3 loss: 6064.489746
+#   Style 4 loss: 156967.260742   
+#   Style 5 loss: 1028.269768
+#   Total loss: 1107180.485287

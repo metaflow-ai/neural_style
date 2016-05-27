@@ -1,6 +1,5 @@
-import os, re
+import os, re, h5py
 import numpy as np 
-from scandir import scandir
 
 from keras import backend as K
 from keras.utils.generic_utils import Progbar
@@ -9,7 +8,11 @@ if K._BACKEND == 'theano':
 else:
     import tensorflow as tf
 
-from utils.imutils import *
+from utils.imutils import load_image
+from utils.optimizers import adam
+from scipy.optimize import fmin_l_bfgs_b
+
+gogh_inc_val = 0
 
 ########
 # Losses
@@ -25,7 +28,7 @@ def grams(X, dim_ordering='th'):
     else:
         try:
             samples, c, h, w = K.int_shape(X)
-        except Exception, e:
+        except Exception:
             samples, c, h, w = K.shape(X)
         
     X_reshaped = K.reshape(X, (-1, c, h * w))
@@ -80,35 +83,63 @@ def total_variation_error(y, beta=1):
 ##########
 # Training
 ##########
-def train_input(input_data, train_iteratee, optimizer, config={}, max_iter=2000):
+def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2000):
     losses = {'training_loss': [], 'cv_loss': [], 'best_loss': 1e15}
 
     wait = 0
     best_input_data = None
     progbar = Progbar(max_iter)
     progbar_values = []
-    for i in range(max_iter):
-        data = train_iteratee([input_data])
-        training_loss = data[0].item(0)
-        grads_val = data[1]
-        input_data, config = optimizer(input_data, grads_val, config)
+    if optimizerName == 'adam':    
+        for i in range(max_iter):
+               
+            data = train_iteratee([input_data])
+            training_loss = data[0].item(0)
+            grads_val = data[1]
 
-        losses['training_loss'].append(training_loss)
-        progbar_values.append(('training_loss', training_loss))
-        for idx, loss in enumerate(data):
-            if idx < 2:
-                continue
-            progbar_values.append(('loss' + str(idx), loss))
-        progbar.update(i + 1, progbar_values)
+            losses['training_loss'].append(training_loss)
+            progbar_values.append(('training_loss', training_loss))
+            for idx, loss in enumerate(data):
+                if idx < 2:
+                    continue
+                progbar_values.append(('loss' + str(idx), loss))
+            progbar.update(i + 1, progbar_values)
 
-        if training_loss < losses['best_loss']:
-            losses['best_loss'] = training_loss
-            best_input_data = np.copy(input_data)
-            wait = 0
-        else:
-            if wait >= 100 and i > max_iter / 2:
-                break
-            wait +=1
+            input_data, config = adam(input_data, grads_val, config)
+
+            if training_loss < losses['best_loss']:
+                losses['best_loss'] = training_loss
+                best_input_data = np.copy(input_data)
+                wait = 0
+            else:
+                if wait >= 100 and i > max_iter / 2:
+                    break
+                wait +=1
+    else:
+        def iter(x):
+            global gogh_inc_val
+            gogh_inc_val += 1
+            x = np.reshape(x, input_data.shape)
+
+            data = train_iteratee([x])
+            training_loss = data[0].item(0)
+            grads_val = data[1]
+            
+            losses['training_loss'].append(training_loss)
+            progbar_values.append(('training_loss', training_loss))
+            for idx, loss in enumerate(data):
+                if idx < 2:
+                    continue
+                progbar_values.append(('loss' + str(idx), loss))
+            progbar.update(gogh_inc_val, progbar_values)
+
+            if training_loss < losses['best_loss']:
+                losses['best_loss'] = training_loss
+
+            return training_loss, grads_val.reshape(-1)
+
+        best_input_data, f ,d = fmin_l_bfgs_b(iter, input_data, maxiter=max_iter)
+        best_input_data = np.reshape(best_input_data, input_data.shape)
 
     print("final loss:", losses['best_loss'])
     return best_input_data, losses
