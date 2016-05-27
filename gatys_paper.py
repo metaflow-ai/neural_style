@@ -21,8 +21,8 @@ dataDir = dir + '/data'
 paintingsDir = dataDir + '/paintings'
 
 channels = 3
-width = 512
-height = 512
+width = 256
+height = 256
 input_shape = (channels, width, height)
 batch = 4
 
@@ -47,9 +47,9 @@ predict = K.function([input_layer], feat_outputs_layer)
 train_feat_labels = predict([X_train])
 
 print('Loading painting')
-suffix = "_ori.hdf5"
+# suffix = "_ori.hdf5"
 # suffix = "_600x600.hdf5"
-# suffix = "_256x256.hdf5"
+suffix = "_256x256.hdf5"
 painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suffix 
 y_styles = load_y_styles(painting_fullpath, style_layers_used)
 
@@ -93,11 +93,12 @@ for idx, feat_output in enumerate(feat_outputs_layer):
                 rtv = reg_TV * reg_TV
                 train_loss =  tls1 + tls2 + tls3 + tls4 + tls5 + tlf + rtv
 
-                grads = K.gradients(train_loss, input_layer)[0]
-                grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
+                grads = K.gradients(train_loss, input_layer)
+                if optimizer == 'adam':
+                    grads = norm_l2(grads)
                 train_iteratee = K.function([input_layer], [train_loss, grads, tls1, tls2, tls3, tls4, tls5, tlf])
 
-                config = {'learning_rate': 1e-01}
+                config = {'learning_rate': 5e-01}
                 best_input_data, losses = train_input(input_data, train_iteratee, optimizer, config, max_iter=2000)
 
                 prefix = str(current_iter).zfill(4)

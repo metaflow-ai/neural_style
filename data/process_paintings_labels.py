@@ -53,7 +53,7 @@ for filename in filenames:
     painting_label = predict([painting])
 
     print('Saving data')
-    f = h5py.File(paintings_fullpath + "/" + filename.split('.')[0] + '_ori.hdf5', "w")
+    f = h5py.File(paintings_fullpath + "/" + filename.split('.')[0] + '_600x600.hdf5', "w")
     for idx, layer_name in enumerate(layers_used):
         print(painting_label[idx].shape)
         f.create_dataset(layer_name, data=painting_label[idx])
@@ -69,7 +69,7 @@ for filename in filenames:
     painting_label = predict([painting])
 
     print('Saving data')
-    f = h5py.File(paintings_fullpath + "/" + filename.split('.')[0] + '_ori.hdf5', "w")
+    f = h5py.File(paintings_fullpath + "/" + filename.split('.')[0] + '_256x256.hdf5', "w")
     for idx, layer_name in enumerate(layers_used):
         print(painting_label[idx].shape)
         f.create_dataset(layer_name, data=painting_label[idx])

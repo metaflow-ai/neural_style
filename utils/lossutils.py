@@ -45,6 +45,10 @@ def frobenius_error(y_true, y_pred):
     loss = K.mean(K.square(y_pred - y_true))
 
     return loss
+
+def norm_l2(x):
+    norm = K.sqrt(K.mean(K.square(x)))
+    return x / (norm + K.epsilon())
     
 def load_y_styles(painting_fullpath, layers_name):
     y_styles = []

@@ -68,7 +68,7 @@ for layer_name in layers_names:
         total_loss_style = loss_style + loss_TV
         grads_style = K.gradients(total_loss_style, input_layer)
         if optimizer == 'adam':
-            grads_style /= (K.sqrt(K.mean(K.square(grads_style))) + K.epsilon())
+            grads_style = norm_l2(grads_style)
         iterate_style = K.function([input_layer], [total_loss_style, grads_style])
 
         print('Compiling VGG headless 1 for ' + layer_name + ' feature reconstruction')
@@ -77,7 +77,7 @@ for layer_name in layers_names:
         total_loss_feat = loss_feat + loss_TV
         grads_feat = K.gradients(total_loss_feat, input_layer)
         if optimizer == 'adam':
-            grads_feat /= (K.sqrt(K.mean(K.square(grads_feat))) + K.epsilon())
+            grads_feat = norm_l2(grads_feat)
         iterate_feat = K.function([input_layer], [total_loss_feat, grads_feat])
 
         prefix = str(current_iter).zfill(4)

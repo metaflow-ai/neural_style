@@ -75,7 +75,7 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
                     loss = alpha * loss_style + beta * loss_feat + gamma * reg_TV
                     grads = K.gradients(loss, input_layer)
                     if optimizer == 'adam':
-                        grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
+                        grads = norm_l2(grads)
                     iterate = K.function([input_layer], [loss, grads, loss_style, loss_feat])
 
                     config = {'learning_rate': 1e-00}
