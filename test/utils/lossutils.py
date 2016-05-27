@@ -76,5 +76,26 @@ class TestImUtils(unittest.TestCase):
 
         self.assertEqual(True, (get_grams(input)==true_grams).all())
 
+    def test_grams_loss(self):
+        input = np.zeros((1, 3, 4, 4))
+        iter = 0
+        for i in range(input.shape[1]):
+            for j in range(input.shape[2]):
+                for k in range(input.shape[3]):
+                    input[0][i][j][k] = iter
+                    iter += 1
+        input = input.astype(K.floatx())
+
+
+        x = K.placeholder(input.shape, name='x')
+        gram_mat = grams(x)
+        loss = frobenius_error(gram_mat, np.ones((1, 3, 3)))
+        get_loss = theano.function([x], loss)
+        
+        error = get_loss(input)
+        true_error = 60344.299382716
+        
+        self.assertEqual(np.round(error.item(0)), np.round(true_error))
+
 if __name__ == '__main__':
     unittest.main()
