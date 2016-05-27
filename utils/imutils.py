@@ -118,7 +118,7 @@ def save_image(fullOutPath, im):
     imsave(fullOutPath, im)
 
 def create_noise_tensor(height, width, channels):
-    return np.random.rand(1, height, width, channels) * 0.001
+    return np.random.randn(1, height, width, channels) * 0.001
 
 def load_hdf5_im(fullpath):
     file = h5py.File(fullpath, 'r')

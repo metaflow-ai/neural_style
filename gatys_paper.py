@@ -22,8 +22,8 @@ if not os.path.isdir(resultsDir):
 paintingsDir = dataDir + '/paintings'
 
 channels = 3
-width = 256
-height = 256
+width = 600
+height = 600
 input_shape = (channels, width, height)
 batch = 4
 
@@ -49,8 +49,8 @@ train_feat_labels = predict([X_train])
 
 print('Loading painting')
 # suffix = "_ori.hdf5"
-# suffix = "_600x600.hdf5"
-suffix = "_256x256.hdf5"
+suffix = "_600x600.hdf5"
+# suffix = "_256x256.hdf5"
 painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suffix 
 y_styles = load_y_styles(painting_fullpath, style_layers_used)
 
@@ -100,7 +100,7 @@ for idx, feat_output in enumerate(feat_outputs_layer):
                 train_iteratee = K.function([input_layer], [train_loss, grads, tls1, tls2, tls3, tls4, tls5, tlf])
 
                 config = {'learning_rate': 5e-01}
-                best_input_data, losses = train_input(input_data, train_iteratee, optimizer, config, max_iter=2000)
+                best_input_data, losses = train_input(input_data, train_iteratee, optimizer, config, max_iter=1000)
 
                 prefix = str(current_iter).zfill(4)
                 suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)

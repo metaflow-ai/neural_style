@@ -4,7 +4,6 @@ dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/../..')
 
 from keras import backend as K
-from keras.backend.common import _FLOATX
 from scipy import misc
 
 from utils.lossutils import *
@@ -50,7 +49,7 @@ class TestImUtils(unittest.TestCase):
                 [-1, 0, 0, 1],
                 [4, 4, 4, 0]
             ],
-        ]]).astype(_FLOATX)
+        ]]).astype(K.floatx())
 
         self.assertEqual(True, (get_grads(input)==true_grad).all())
 
@@ -62,13 +61,13 @@ class TestImUtils(unittest.TestCase):
                 for k in range(input.shape[3]):
                     input[0][i][j][k] = iter
                     iter += 1
-        input = input.astype('float32')
+        input = input.astype(K.floatx())
 
         true_grams = np.array([[
                     [1240, 3160, 5080],
                     [3160, 9176,15192],
                     [5080,  15192,  25304]
-                ]]).astype('float32')
+                ]]).astype(K.floatx())
         true_grams /= input.shape[1] * input.shape[2] * input.shape[3]
 
         x = K.placeholder(input.shape, name='x')
