@@ -14,10 +14,11 @@ if optimizer == 'lbfgs':
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
-resultsDir = dir + '/models/results/vgg19'
+dataDir = dir + '/data'
+resultsDir = dataDir + '/output/vgg19'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
-dataDir = dir + '/data'
+
 paintingsDir = dataDir + '/paintings'
 
 channels = 3
@@ -38,7 +39,7 @@ print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
 style_layers_used = ['conv_1_1', 'conv_2_1', 'conv_3_1', 'conv_4_1', 'conv_5_1']
-feat_layers_used = ['conv_1_1', 'conv_2_1', 'conv_3_1', 'conv_4_1', 'conv_5_1']
+feat_layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_2', 'conv_4_2', 'conv_5_2']
 style_outputs_layer = [layer_dict[name].output for name in style_layers_used]
 feat_outputs_layer = [layer_dict[name].output for name in feat_layers_used]
 
@@ -90,7 +91,7 @@ for idx, feat_output in enumerate(feat_outputs_layer):
                 tls4 = train_loss_style4 * alpha * 0.2
                 tls5 = train_loss_style5 * alpha * 0.2
                 tlf = train_loss_feat * beta
-                rtv = reg_TV * reg_TV
+                rtv = reg_TV * gamma
                 train_loss =  tls1 + tls2 + tls3 + tls4 + tls5 + tlf + rtv
 
                 grads = K.gradients(train_loss, input_layer)

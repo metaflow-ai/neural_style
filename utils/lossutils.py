@@ -86,9 +86,7 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
     losses = {'training_loss': [], 'cv_loss': [], 'best_loss': 1e15}
 
     wait = 0
-    best_input_data = None
-    progbar = Progbar(max_iter)
-    progbar_values = []
+    best_input_data = None    
     if optimizerName == 'adam':    
         for i in range(max_iter):
                
@@ -97,14 +95,13 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
             grads_val = data[1]
 
             losses['training_loss'].append(training_loss)
-            progbar_values.append(('training_loss', training_loss))
-            for idx, loss in enumerate(data):
-                if idx < 2:
-                    continue
-                progbar_values.append(('loss' + str(idx), loss))
-            progbar.update(i + 1, progbar_values)
-
-            input_data, config = adam(input_data, grads_val, config)
+            if i % 25 == 0:
+                print('Iteration: %d/%d' % (i, max_iter) )
+                print('    training_loss: %f' % (training_loss))
+                for idx, loss in enumerate(data):
+                    if idx < 2:
+                        continue
+                    print('    loss %f: %f' % (idx - 1, loss))
 
             if training_loss < losses['best_loss']:
                 losses['best_loss'] = training_loss
@@ -114,6 +111,8 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
                 if wait >= 100 and i > max_iter / 2:
                     break
                 wait +=1
+
+            input_data, config = adam(input_data, grads_val, config)
     else:
         global gogh_inc_val
         gogh_inc_val = 0
@@ -127,12 +126,13 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
             grads_val = data[1]
             
             losses['training_loss'].append(training_loss)
-            progbar_values.append(('training_loss', training_loss))
-            for idx, loss in enumerate(data):
-                if idx < 2:
-                    continue
-                progbar_values.append(('loss' + str(idx), loss))
-            progbar.update(gogh_inc_val, progbar_values)
+            if gogh_inc_val % 25 == 0:
+                print('Iteration: %d/%d' % (gogh_inc_val, max_iter))
+                print('    training_loss: %f' % (training_loss))
+                for idx, loss in enumerate(data):
+                    if idx < 2:
+                        continue
+                    print('    loss %f: %f' % (idx - 1, loss))
 
             if training_loss < losses['best_loss']:
                 losses['best_loss'] = training_loss

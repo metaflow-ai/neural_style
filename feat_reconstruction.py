@@ -85,7 +85,7 @@ for layer_name in layers_names:
 
         print('Training the image for style')
         config = {'learning_rate': 5e-1}
-        best_input_style_data, style_losses = train_input(input_data, iterate_style, optimizer, config, max_iter=1500)
+        best_input_style_data, style_losses = train_input(input_data, iterate_style, optimizer, config, max_iter=1000)
         fullOutPath = resultsDir + '/' + prefix + '_style_' + layer_name + suffix + ".png"
         dump_as_hdf5(resultsDir + '/' + prefix + '_style_' + layer_name + suffix + ".hdf5", best_input_style_data[0])
         save_image(fullOutPath, deprocess(best_input_style_data[0], dim_ordering='th'))
@@ -93,7 +93,7 @@ for layer_name in layers_names:
 
         print('Training the image for feature')
         config = {'learning_rate': 5e-1}
-        best_input_feat_data, feat_losses = train_input(input_data, iterate_feat, optimizer, config, max_iter=1500)
+        best_input_feat_data, feat_losses = train_input(input_data, iterate_feat, optimizer, config, max_iter=1000)
         fullOutPath = resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".png"
         dump_as_hdf5(resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".hdf5", best_input_feat_data[0])
         save_image(fullOutPath, deprocess(best_input_feat_data[0], dim_ordering='th'))
