@@ -7,16 +7,17 @@ from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 from utils.imutils import *
 from utils.lossutils import *
 
-optimizer = 'lbfgs'
+optimizer = 'adam'
 if optimizer == 'lbfgs':
     K.set_floatx('float64') # scipy needs float64 to use lbfgs
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
-resultsDir = dir + '/models/results/vgg19'
+dataDir = dir + '/data'
+resultsDir = dataDir + '/output/vgg19'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
-dataDir = dir + '/data'
+
 
 channels = 3
 width = 256
@@ -59,7 +60,7 @@ for layer_name in layers_names:
     
     reg_TV = total_variation_error(input_layer, 2)
 
-    for gamma in [1e-03, 0]:
+    for gamma in [1e-05, 0]:
         print('gamma:' + str(gamma))
         print('Compiling VGG headless 1 for ' + layer_name + ' style reconstruction')
         loss_style = frobenius_error(grams(y_style).copy(), grams(out).copy())
@@ -71,7 +72,7 @@ for layer_name in layers_names:
         iterate_style = K.function([input_layer], [total_loss_style, grads_style])
 
         print('Compiling VGG headless 1 for ' + layer_name + ' feature reconstruction')
-        loss_feat = squared_normalized_frobenius_error(y_feat, out)
+        loss_feat = frobenius_error(y_feat, out)
         loss_TV =  gamma * reg_TV
         total_loss_feat = loss_feat + loss_TV
         grads_feat = K.gradients(total_loss_feat, input_layer)
@@ -83,7 +84,7 @@ for layer_name in layers_names:
         suffix = '_gamma' + str(gamma)
 
         print('Training the image for style')
-        config = {'learning_rate': 1e-00}
+        config = {'learning_rate': 5e-1}
         best_input_style_data, style_losses = train_input(input_data, iterate_style, optimizer, config, max_iter=1500)
         fullOutPath = resultsDir + '/' + prefix + '_style_' + layer_name + suffix + ".png"
         dump_as_hdf5(resultsDir + '/' + prefix + '_style_' + layer_name + suffix + ".hdf5", best_input_style_data[0])
@@ -91,7 +92,7 @@ for layer_name in layers_names:
         plot_losses(style_losses, resultsDir, prefix + '_style', suffix)
 
         print('Training the image for feature')
-        config = {'learning_rate': 1e-00}
+        config = {'learning_rate': 5e-1}
         best_input_feat_data, feat_losses = train_input(input_data, iterate_feat, optimizer, config, max_iter=1500)
         fullOutPath = resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".png"
         dump_as_hdf5(resultsDir + '/' + prefix + '_feat_' + layer_name + suffix + ".hdf5", best_input_feat_data[0])

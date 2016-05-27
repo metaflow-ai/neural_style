@@ -2,6 +2,7 @@
 .DS_Store
 
 # Project
+data/**/*.jpeg
 data/**/*.jpg
 data/**/*.png
 data/**/*.hdf5

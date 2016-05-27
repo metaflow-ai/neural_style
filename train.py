@@ -12,7 +12,7 @@ from models.style_transfer import style_transfer
 
 from utils.imutils import plot_losses
 from utils.lossutils import (grams, frobenius_error, 
-                    squared_normalized_frobenius_error, train_weights,
+                    frobenius_error, train_weights,
                     total_variation_error)
 
 dir = os.path.dirname(os.path.realpath(__file__))
@@ -83,7 +83,7 @@ loss_style1_2 = frobenius_error(y_styles[0], grams(pred_style[0]))
 loss_style2_2 = frobenius_error(y_styles[1], grams(pred_style[1]))
 loss_style3_3 = frobenius_error(y_styles[2], grams(pred_style[2]))
 loss_style4_3 = frobenius_error(y_styles[3], grams(pred_style[3]))
-train_loss_feat = squared_normalized_frobenius_error(y_feat, pred_feat)
+train_loss_feat = frobenius_error(y_feat, pred_feat)
 reg_TV = total_variation_error(l_output)
 
 print('Iterating over hyper parameters')

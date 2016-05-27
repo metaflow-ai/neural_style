@@ -54,11 +54,11 @@ painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suf
 y_styles = load_y_styles(painting_fullpath, style_layers_used)
 
 print('Preparing training loss functions')
-train_loss_style1_2 = frobenius_error(y_styles[0], grams(style_outputs_layer[0]))
-train_loss_style2_2 = frobenius_error(y_styles[1], grams(style_outputs_layer[1]))
-train_loss_style3_4 = frobenius_error(y_styles[2], grams(style_outputs_layer[2]))
-train_loss_style4_4 = frobenius_error(y_styles[3], grams(style_outputs_layer[3]))
-train_loss_style5_4 = frobenius_error(y_styles[4], grams(style_outputs_layer[4]))
+train_loss_style1 = frobenius_error(y_styles[0], grams(style_outputs_layer[0]))
+train_loss_style2 = frobenius_error(y_styles[1], grams(style_outputs_layer[1]))
+train_loss_style3 = frobenius_error(y_styles[2], grams(style_outputs_layer[2]))
+train_loss_style4 = frobenius_error(y_styles[3], grams(style_outputs_layer[3]))
+train_loss_style5 = frobenius_error(y_styles[4], grams(style_outputs_layer[4]))
 
 reg_TV = total_variation_error(input_layer, 2)
 
@@ -74,7 +74,7 @@ for idx, feat_output in enumerate(feat_outputs_layer):
         # conv_5_4 layer doesn't hold enough information to rebuild the structure of the photo
         continue
     layer_name_feat = feat_layers_used[idx]
-    train_loss_feat = squared_normalized_frobenius_error(train_feat_labels[idx], feat_output)
+    train_loss_feat = frobenius_error(train_feat_labels[idx], feat_output)
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
     for alpha in [1e2]:
         for beta in [5e0]:
@@ -84,69 +84,27 @@ for idx, feat_output in enumerate(feat_outputs_layer):
                 print("alpha, beta, gamma:", alpha, beta, gamma)
 
                 print('Compiling model')
-                # Based on previous analysis, the conv_2_2/conv_3_3 layers have
-                train_loss = alpha * 0.25 * (train_loss_style1_2 + train_loss_style2_2 + train_loss_style3_4 + train_loss_style4_4 + train_loss_style5_4) \
-                    + beta * train_loss_feat \
-                    + gamma * reg_TV
+                tls1 = train_loss_style1 * alpha * 0.2
+                tls2 = train_loss_style2 * alpha * 0.2
+                tls3 = train_loss_style3 * alpha * 0.2
+                tls4 = train_loss_style4 * alpha * 0.2
+                tls5 = train_loss_style5 * alpha * 0.2
+                tlf = train_loss_feat * beta
+                rtv = reg_TV * reg_TV
+                train_loss =  tls1 + tls2 + tls3 + tls4 + tls5 + tlf + rtv
 
                 grads = K.gradients(train_loss, input_layer)[0]
                 grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
-                train_iteratee = K.function([input_layer], [train_loss, grads, train_loss_style1_2, train_loss_style2_2, train_loss_style3_4, train_loss_style4_4, train_loss_style5_4, train_loss_feat])
+                train_iteratee = K.function([input_layer], [train_loss, grads, tls1, tls2, tls3, tls4, tls5, tlf])
 
                 config = {'learning_rate': 1e-01}
                 best_input_data, losses = train_input(input_data, train_iteratee, optimizer, config, max_iter=2000)
 
                 prefix = str(current_iter).zfill(4)
                 suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
-                fullOutPath = resultsDir + '/' + prefix + '_gatys_paper_feat' + layer_name_feat + suffix + '.png'
-                dump_as_hdf5(resultsDir + '/' + prefix + '_gatys_paper_feat' + layer_name_feat + suffix + ".hdf5", best_input_data[0])
-                save_image(fullOutPath, deprocess(best_input_data[0], dim_ordering='th'))
+                filename = prefix + '_gatys_paper_feat' + layer_name_feat + suffix
+                dump_as_hdf5(resultsDir + '/' + filename + ".hdf5", best_input_data[0])
+                save_image(resultsDir + '/' + filename + '.png', deprocess(best_input_data[0], dim_ordering='th'))
                 plot_losses(losses, resultsDir, prefix, suffix)
 
                 current_iter += 1
-
-# Iteration 50 / 3000
-# Content 1 loss: 3226485.625000
-# Style 1 loss: 39559.396362
-# Style 2 loss: 10792833.593750 
-# Style 3 loss: 5803062.500000  
-# Style 4 loss: 323124450.000000
-# Style 5 loss: 32399.188232
-# Total loss: 343018790.303345  
-
-# Iteration 3000 / 3000   
-# Content 1 loss: 5821123.125000
-# Style 1 loss: 6668.415070
-# Style 2 loss: 299653.906250   
-# Style 3 loss: 56700.866699
-# Style 4 loss: 1037099.707031  
-# Style 5 loss: 5111.179733
-# Total loss: 7226357.199783
-
-# Lbfgs
-# Iteration 50 / 1000
-#   Content 1 loss: 4663373.750000
-#   Style 1 loss: 9212.595367
-#   Style 2 loss: 312963.330078   
-#   Style 3 loss: 330140.673828   
-#   Style 4 loss: 2972260.156250  
-#   Style 5 loss: 14337.231445
-#   Total loss: 8302287.736969
-
-# Iteration 1000 / 1000   128x128
-# Content 1 loss: 2897667.812500
-# Style 1 loss: 396.964931
-# Style 2 loss: 13595.199585
-# Style 3 loss: 52363.897705
-# Style 4 loss: 1150498.828125  
-# Style 5 loss: 15163.168335
-# Total loss: 4129685.871181
-
-# Iteration 1000 / 1000   512x512
-#   Content 1 loss: 937079.453125 
-#   Style 1 loss: 304.119968
-#   Style 2 loss: 5736.891937
-#   Style 3 loss: 6064.489746
-#   Style 4 loss: 156967.260742   
-#   Style 5 loss: 1028.269768
-#   Total loss: 1107180.485287

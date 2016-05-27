@@ -42,15 +42,10 @@ def grams(X, dim_ordering='th'):
     return X_gram
 
 def frobenius_error(y_true, y_pred):
-    loss = K.sum(K.square(y_pred - y_true))
+    loss = K.mean(K.square(y_pred - y_true))
 
     return loss
-
-def squared_normalized_frobenius_error(y_true, y_pred):
-    loss = K.mean(K.square(y_pred - y_true)) 
-
-    return loss
-
+    
 def load_y_styles(painting_fullpath, layers_name):
     y_styles = []
     with h5py.File(painting_fullpath, 'r') as f:
@@ -116,6 +111,8 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
                     break
                 wait +=1
     else:
+        global gogh_inc_val
+        gogh_inc_val = 0
         def iter(x):
             global gogh_inc_val
             gogh_inc_val += 1
@@ -162,10 +159,6 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
 
         ims = []
         current_batch = 0
-        # for dirEntry in scandir(input_dir):
-        #     if not len(re.findall('\.(jpg|png)$', dirEntry.path)):
-        #         continue
-        #     fullpath = dirEntry.path
         for idx, fullpath in enumerate(files):
             im = load_image(fullpath, size=size)
             ims.append(im)

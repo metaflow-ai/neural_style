@@ -73,7 +73,7 @@ def preprocess(im, size=None, dim_ordering='tf'):
         raise Exception('image should have 3 or 4 dimensions')
 
     if size != None:
-        im = misc.imresize(im, size)
+        im = misc.imresize(im, size, interp='bilinear')
 
     return np.array(im)
 

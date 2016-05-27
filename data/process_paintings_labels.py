@@ -1,25 +1,24 @@
-import os, sys
+import os, sys, re, h5py, gc
 
 dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/..')
 
 import numpy as np
-import h5py, gc
 
 from keras import backend as K
 
-from vgg19.model_headless import *
+from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
-from utils.imutils import *
-from utils.lossutils import *
+from utils.imutils import load_image
+from utils.lossutils import grams
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/../vgg19'
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
 paintingsDir = dir + '/paintings'
 
-model = VGG_19_headless_5(modelWeights, trainable=False, poolingType='average')
-layer_dict = dict([(layer.name, layer) for layer in model.layers])
+model = VGG_19_headless_5(modelWeights, trainable=False)
+layer_dict, layers_names = get_layer_data(model, 'conv_')
 input_layer = model.input
 layers_used = ['conv_1_1', 'conv_1_2', 'conv_2_1', 'conv_2_2', 'conv_3_1', 'conv_3_4', 'conv_4_1', 'conv_4_4', 'conv_5_1', 'conv_5_4']
 outputs_layer = [grams(layer_dict[name].output) for name in layers_used]

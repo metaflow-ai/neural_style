@@ -7,16 +7,17 @@ from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 from utils.imutils import *
 from utils.lossutils import *
 
-optimizer = 'lbfgs'
+optimizer = 'adam'
 if optimizer == 'lbfgs':
     K.set_floatx('float64') # scipy needs float64 to use lbfgs
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
-resultsDir = dir + '/models/results/vgg19'
+dataDir = dir + '/data'
+resultsDir = dataDir + '/output/vgg19'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
-dataDir = dir + '/data'
+
 
 channels = 3
 width = 256
@@ -56,16 +57,16 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
         out_feat_labels = predict_feat([X_train])
 
         loss_style = frobenius_error(grams(out_style_labels), grams(out_style))
-        loss_feat = squared_normalized_frobenius_error(out_feat_labels, out_feat)
+        loss_feat = frobenius_error(out_feat_labels, out_feat)
         reg_TV = total_variation_error(input_layer, 2)
 
         print('Compiling VGG headless 5 for feat ' + layer_name_feat + ' and style ' + layer_name_style)
         # At the same layer
         # if alpha/beta >= 1e02 we only see style
         # if alpha/beta <= 1e-04 we only see the picture
-        for alpha in [1e02, 1., 1e-02, 1e-04]:
-            for beta in [1.]:
-                for gamma in [1e-03, 1e-05, 0]:
+        for alpha in [1e02, 1.]:
+            for beta in [5., 1.]:
+                for gamma in [1e-03, 0]:
                     if alpha == beta and alpha != 1:
                         continue
                     print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -75,7 +76,7 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
                     grads = K.gradients(loss, input_layer)
                     if optimizer == 'adam':
                         grads /= (K.sqrt(K.mean(K.square(grads))) + K.epsilon())
-                    iterate = K.function([input_layer], [loss, grads])
+                    iterate = K.function([input_layer], [loss, grads, loss_style, loss_feat])
 
                     config = {'learning_rate': 1e-00}
                     best_input_data, losses = train_input(input_data, iterate, optimizer, config, max_iter=1500)
