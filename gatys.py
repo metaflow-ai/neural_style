@@ -26,11 +26,11 @@ input_shape = (channels, width, height)
 batch = 4
 
 print('Loading a cat image')
-X_train = load_images(dataDir + '/overfit', size=(height, width), limit=1, dim_ordering='th')
+X_train = load_images(dataDir + '/overfit', size=(height, width), limit=1, dim_ordering='th', verbose=True)
 print("X_train shape:", X_train.shape)
 
 print('Loading painting')
-X_train_style = load_images(dataDir + '/paintings', size=(height, width), limit=1, dim_ordering='th')
+X_train_style = load_images(dataDir + '/paintings', size=(height, width), limit=1, dim_ordering='th', verbose=True)
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')

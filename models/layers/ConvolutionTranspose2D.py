@@ -1,9 +1,4 @@
 from keras import backend as K
-if K._BACKEND == 'theano':
-     raise Exception('Theano backend is not supported for convolution transpose')
-else:
-    import tensorflow as tf
-
 from keras.backend.common import _FLOATX
 from keras import activations, initializations, regularizers, constraints
 from keras.engine import Layer, InputSpec
@@ -89,6 +84,11 @@ class ConvolutionTranspose2D(Layer):
                  W_regularizer=None, b_regularizer=None, activity_regularizer=None,
                  W_constraint=None, b_constraint=None,
                  bias=True, **kwargs):
+
+        if K._BACKEND == 'theano':
+             raise Exception('Theano backend is not supported for convolution transpose')
+        else:
+            import tensorflow as tf
 
         if border_mode not in {'valid', 'same'}:
             raise Exception('Invalid border mode for Convolution2D:', border_mode)

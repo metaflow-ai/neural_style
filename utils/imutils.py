@@ -28,7 +28,7 @@ def memoize(obj):
 
     return memoizer
 
-def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf'):
+def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=False):
     ims = []
     filenames = [f for f in os.listdir(absPath) if len(re.findall('\.(jpe?g|png)$', f))]
     for idx, filename in enumerate(filenames):
@@ -36,13 +36,14 @@ def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf'):
             break
         
         fullpath = absPath + '/' + filename
-        im = load_image(fullpath, size, dim_ordering)
+        im = load_image(fullpath, size, dim_ordering, verbose)
         ims.append(im)
 
     return np.array(ims)
 
-def load_image(fullpath, size=(600, 600), dim_ordering='tf'):
-    print('Loading ' + fullpath)
+def load_image(fullpath, size=(600, 600), dim_ordering='tf', verbose=False):
+    if verbose:
+        print('Loading ' + fullpath)
     # VGG needs BGR data
     im = misc.imread(fullpath, mode='RGB') # height, width, channels
     im = preprocess(im, size)

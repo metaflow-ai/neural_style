@@ -28,8 +28,12 @@ input_shape = (channels, width, height)
 batch = 4
 
 print('Loading train images')
-X_train = load_images(dataDir + '/overfit', size=(height, width), limit=1, dim_ordering='th')
+X_train = load_images(dataDir + '/overfit', size=(height, width), limit=1, dim_ordering='th', verbose=True)
 print("X_train shape:", X_train.shape)
+
+print('Loading painting')
+X_train_style = load_images(dataDir + '/paintings', size=(height, width), limit=1, dim_ordering='th', verbose=True)
+print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
@@ -44,22 +48,17 @@ style_outputs_layer = [layer_dict[name].output for name in style_layers_used]
 feat_outputs_layer = [layer_dict[name].output for name in feat_layers_used]
 
 print('Creating training labels')
-predict = K.function([input_layer], feat_outputs_layer)
-train_feat_labels = predict([X_train])
-
-print('Loading painting')
-# suffix = "_ori.hdf5"
-suffix = "_600x600.hdf5"
-# suffix = "_256x256.hdf5"
-painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suffix 
-y_styles = load_y_styles(painting_fullpath, style_layers_used)
+predict_style = K.function([input_layer], style_outputs_layer)
+train_style_labels = predict_style([X_train_style])
+predict_feat = K.function([input_layer], feat_outputs_layer)
+train_feat_labels = predict_feat([X_train])
 
 print('Preparing training loss functions')
-train_loss_style1 = frobenius_error(y_styles[0], grams(style_outputs_layer[0]))
-train_loss_style2 = frobenius_error(y_styles[1], grams(style_outputs_layer[1]))
-train_loss_style3 = frobenius_error(y_styles[2], grams(style_outputs_layer[2]))
-train_loss_style4 = frobenius_error(y_styles[3], grams(style_outputs_layer[3]))
-train_loss_style5 = frobenius_error(y_styles[4], grams(style_outputs_layer[4]))
+train_loss_style1 = frobenius_error(grams(train_style_labels[0]), grams(style_outputs_layer[0]))
+train_loss_style2 = frobenius_error(grams(train_style_labels[1]), grams(style_outputs_layer[1]))
+train_loss_style3 = frobenius_error(grams(train_style_labels[2]), grams(style_outputs_layer[2]))
+train_loss_style4 = frobenius_error(grams(train_style_labels[3]), grams(style_outputs_layer[3]))
+train_loss_style5 = frobenius_error(grams(train_style_labels[4]), grams(style_outputs_layer[4]))
 
 reg_TV = total_variation_error(input_layer, 2)
 

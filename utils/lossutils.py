@@ -154,7 +154,7 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
     wait = 0
     current_iter = 0
     current_epoch = 0
-    files = [input_dir + '/' + name for name in os.listdir(input_dir) if len(re.findall('\.(jpg|png)$', name))]
+    files = [input_dir + '/' + name for name in os.listdir(input_dir) if len(re.findall('\.(jpe?g|png)$', name))]
     
     while need_more_training:
         print('Epoch %d, max_iter %d, total_files %d' % (current_epoch + 1, max_iter, len(files)))
@@ -164,19 +164,24 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
         ims = []
         current_batch = 0
         for idx, fullpath in enumerate(files):
-            im = load_image(fullpath, size=size)
+            im = load_image(fullpath, size=size, dim_ordering='th')
             ims.append(im)
             if len(ims) >= batch_size:
-                ims = np.array(ims)
-                training_loss = train_iteratee([ims, True])
-                training_loss = training_loss[0].item(0)
+                current_iter += 1
+                data = train_iteratee([np.array(ims), True])
+
+                training_loss = data[0].item(0)
                 losses['training_loss'].append(training_loss)
                 progbar_values.append(('training_loss', training_loss))
-                if cv_input_dir != None:
-                    cv_loss = train_iteratee([cv_input_dir, False])
-                    cv_loss = cv_loss[0].item(0)
-                    losses['cv_loss'].append(cv_loss)
-                    progbar_values.append(('cv_loss', cv_loss))
+                for loss_idx, loss in enumerate(data):
+                    if idx < 1:
+                        continue
+                    progbar_values.append(('loss ' + str(loss_idx), loss))
+                # if cv_input_dir != None:
+                #     data_loss = train_iteratee([cv_input_dir, False])
+                #     cv_loss = data_loss[0].item(0)
+                #     losses['cv_loss'].append(cv_loss)
+                #     progbar_values.append(('cv_loss', cv_loss))
 
                 progbar.update(current_iter, progbar_values)
 
@@ -190,7 +195,6 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
                         break
                     wait +=1
 
-                current_iter += 1
                 current_batch += 1
                 ims = []
 

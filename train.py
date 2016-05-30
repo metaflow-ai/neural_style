@@ -1,19 +1,17 @@
-import os, json, h5py
+import os, json
 
 from keras import backend as K
 from keras.engine.training import collect_trainable_weights
-from keras.layers.core import Lambda
 from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot
 
-from vgg19.model import VGG_19_mean 
-from vgg19.model_headless import VGG_19_headless_5
-from models.style_transfer import style_transfer
+from vgg19.model_headless import VGG_19_headless_5, get_layer_data
+from models.style_transfer import (style_transfer_conv_transpose,
+                        style_transfer_upsample)
 
-from utils.imutils import plot_losses
+from utils.imutils import plot_losses, load_images, preprocess
 from utils.lossutils import (grams, frobenius_error, 
-                    frobenius_error, train_weights,
-                    total_variation_error)
+                    train_weights, total_variation_error)
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
@@ -33,19 +31,29 @@ max_number_of_epoch = 2
 
 print('Loading style_transfer model')
 stWeightsFullpath = dir + '/models/st_vangogh_weights.hdf5'
-st_model = style_transfer(input_shape=input_shape)
-init_weights = st_model.get_weights()
+st_model = style_transfer_upsample(input_shape=input_shape)
 if os.path.isfile(stWeightsFullpath): 
     print("Loading weights")
     st_model = st_model.load_weights(stWeightsFullpath)
+init_weights = st_model.get_weights()
 
-print('Loading VGG headless 5 model')
-modelWeights = vgg19Dir + '/vgg-16_headless_5_weights.hdf5'
-vgg_model = VGG_19_headless_5(modelWeights, input_shape=input_shape, trainable=False, poolingType='average')
-meanPath = vgg19Dir + '/vgg-16_mean.npy'
-mean = VGG_19_mean(path=meanPath)
+print('Loading painting')
+X_train_style = load_images(dataDir + '/paintings', size=(height, width), dim_ordering='th', verbose=True)
+X_train_style = X_train_style[7:8]
+print("X_train_style shape:", X_train_style.shape)
 
-print('Loading label generator')
+print('Loading VGG headless 5')
+modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
+vgg_model = VGG_19_headless_5(modelWeights, trainable=False)
+layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
+print('Layers found:' + ', '.join(layers_names))
+
+print('Creating training labels')
+style_layers_used = ['conv_1_1', 'conv_2_1', 'conv_3_1', 'conv_4_1', 'conv_5_1']
+style_outputs_layer = [grams(layer_dict[name].output) for name in style_layers_used]
+predict_style = K.function([vgg_model.input], style_outputs_layer)
+y_style = predict_style([X_train_style])
+
 [c11, c12, 
 c21, c22, 
 c31, c32, c33, c34, 
@@ -54,78 +62,52 @@ c51, c52, c53, c54] = vgg_model(st_model.input)
 y_feat = c42
 
 print('Building full model')
-l_output = Lambda(lambda x: x - mean, output_shape=lambda shape: shape)(st_model.output)
 [fm_c11, fm_c12, 
 fm_c21, fm_c22, 
 fm_c31, fm_c32, fm_c33, fm_c34,
-fm_c41, fm_c42, fm_c43, fm_c44
-fm_c51, fm_c52, fm_c53, fm_c54] = vgg_model(l_output)
+fm_c41, fm_c42, fm_c43, fm_c44,
+fm_c51, fm_c52, fm_c53, fm_c54] = vgg_model(st_model.output)
 preds = [fm_c11, fm_c12, fm_c21, fm_c22, fm_c31, fm_c32, fm_c33, fm_c34, fm_c41, fm_c42, fm_c43, fm_c44, fm_c51, fm_c52, fm_c53, fm_c54]
-pred_style = [fm_c12, fm_c22, fm_c33, fm_c43]
-pred_feat = fm_c33
+pred_style = [fm_c11, fm_c21, fm_c31, fm_c41, fm_c51]
+pred_feat = fm_c42
 
-print('Loading painting')
-# suffix = "_ori.hdf5"
-# suffix = "_600x600.hdf5"
-suffix = "_256x256.hdf5"
-painting_fullpath = paintingsDir + '/van_gogh-starry_night_over_the_rhone' + suffix 
-with h5py.File(painting_fullpath, 'r') as f:
-    y_styles = []
-    y_styles.append(f['conv_1_2'][()])
-    y_styles.append(f['conv_2_2'][()])
-    y_styles.append(f['conv_3_3'][()])
-    y_styles.append(f['conv_4_3'][()])
-    y_styles.append(f['conv_5_3'][()])
+print('Preparing training loss functions')
+train_loss_style1 = frobenius_error(y_style[0], grams(pred_style[0]))
+train_loss_style2 = frobenius_error(y_style[1], grams(pred_style[1]))
+train_loss_style3 = frobenius_error(y_style[2], grams(pred_style[2]))
+train_loss_style4 = frobenius_error(y_style[3], grams(pred_style[3]))
+train_loss_style5 = frobenius_error(y_style[4], grams(pred_style[4]))
 
-
-print('preparing loss functions')
-loss_style1_2 = frobenius_error(y_styles[0], grams(pred_style[0]))
-loss_style2_2 = frobenius_error(y_styles[1], grams(pred_style[1]))
-loss_style3_3 = frobenius_error(y_styles[2], grams(pred_style[2]))
-loss_style4_3 = frobenius_error(y_styles[3], grams(pred_style[3]))
 train_loss_feat = frobenius_error(y_feat, pred_feat)
-reg_TV = total_variation_error(l_output)
+
+reg_TV = total_variation_error(st_model.output, 2)
 
 print('Iterating over hyper parameters')
 current_iter = 0
-for alpha in [1e-03, 1e-04]:
-    for beta in [1.]:
-        for gamma in [1e-04, 1e-05]:
+for alpha in [1e-2]:
+    for beta in [5.]:
+        for gamma in [1e-03]:
             print("alpha, beta, gamma:", alpha, beta, gamma)
 
             st_model.set_weights(init_weights)
             print('Compiling train loss')
-            train_loss = alpha * 0.25 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + 1e03 * loss_style4_3) \
-                + beta * train_loss_feat \
-                + gamma * reg_TV
+            tls1 = train_loss_style1 * alpha * 0.2
+            tls2 = train_loss_style2 * alpha * 0.2
+            tls3 = train_loss_style3 * alpha * 0.2
+            tls4 = train_loss_style4 * alpha * 0.2
+            tls5 = train_loss_style5 * alpha * 0.2
+            tlf = train_loss_feat * beta
+            rtv = reg_TV * gamma
+            train_loss =  tls1 + tls2 + tls3 + tls4 + tls5 + tlf + rtv
 
             print('Compiling Adam update')
             adam = Adam(lr=1e-03)
             updates = adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
 
             print('Compiling train function')
-            train_iteratee = K.function([st_model.input, K.learning_phase()], [train_loss], updates=updates)
+            train_iteratee = K.function([st_model.input, K.learning_phase()], [train_loss, tlf, tls1, tls2, tls3, tls4, tls5], updates=updates)
 
             print('Starting training')
-# X_train = load_images(trainDir, size=(height, width))
-# print("X_train shape: " + str(X_train.shape))
-
-
-# print('Loading cross validation images')
-# # X_cv = load_images(dataDir + '/val')
-# X_cv = load_images(dataDir + '/overfit/cv', size=(height, width))
-# print("X_cv shape: " + str(X_cv.shape))
-
-
-#             if len(X_cv):
-#                 print('Preparing cv iteratee function')
-#                 cv_loss = alpha * 0.25 * (loss_style1_2 + loss_style2_2 + loss_style3_3 + 1e03 * loss_style4_3) \
-#                     + beta * cv_loss_feat \
-#                     + gamma * reg_TV
-#                 cross_val_iteratee = K.function([st_model.input, K.learning_phase()], [cv_loss])
-#             else:
-#                 cross_val_iteratee = None
-
             best_trainable_weights, losses = train_weights(
                 trainDir,
                 (height, width),
