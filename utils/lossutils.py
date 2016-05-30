@@ -151,7 +151,6 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
     best_trainable_weights = model.get_weights()
 
     need_more_training = True
-    wait = 0
     current_iter = 0
     current_epoch = 0
     files = [input_dir + '/' + name for name in os.listdir(input_dir) if len(re.findall('\.(jpe?g|png)$', name))]
@@ -188,12 +187,6 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
                 if training_loss < losses['best_loss']:
                     losses['best_loss'] = training_loss
                     best_trainable_weights = model.get_weights()
-                    wait = 0
-                else:
-                    if wait >= 100 and current_iter > max_iter / 2:
-                        need_more_training = False
-                        break
-                    wait +=1
 
                 current_batch += 1
                 ims = []
