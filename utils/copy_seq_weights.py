@@ -1,4 +1,5 @@
 import h5py
+import numpy as np
 
 # You don't need any input layer in a sequential model which usually end up 
 # with a model minus that one input layer
@@ -15,8 +16,11 @@ def copySeqWeights(model, weightsFullPath, outputFilename, offset=1, limit=-1):
         if k >= nbLayer - offset or (limit > 0 and k >= limit):
             break
         g = f['layer_{}'.format(k)]
-        weights = [g['param_{}'.format(p)] for p in range(g.attrs['nb_params'])]
+        weights = [g.get('param_{}'.format(p))[()] for p in range(g.attrs['nb_params'])]
         print(model.layers[k+offset].name)
+        if len(weights):
+            weights[0] = np.round(weights[0][:, :, ::-1, ::-1], 4)
+            # print(weights[0].shape)
         model.layers[k+offset].set_weights(weights)
 
     f.close()

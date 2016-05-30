@@ -30,7 +30,7 @@ def memoize(obj):
 
 def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf'):
     ims = []
-    filenames = [f for f in os.listdir(absPath) if len(re.findall('\.(jpg|png)$', f))]
+    filenames = [f for f in os.listdir(absPath) if len(re.findall('\.(jpe?g|png)$', f))]
     for idx, filename in enumerate(filenames):
         if limit > 0 and idx >= limit:
             break
@@ -55,55 +55,55 @@ def load_image(fullpath, size=(600, 600), dim_ordering='tf'):
 # im should be in RGB order
 # dim_ordering: How "im" is ordered
 def preprocess(im, size=None, dim_ordering='tf'):
+    if size != None:
+        im = misc.imresize(im, size, interp='bilinear')
+
     im = im.copy().astype(K.floatx())
-    
+
+    nb_dims = len(im.shape)
+
     if dim_ordering == 'th': # 'th' dim_ordering: [channels, height, width] 
         # tf order
-        im = im.transpose(1, 2, 0)
+        if nb_dims == 3:
+            im = im.transpose(1, 2, 0)
+        else:
+            im = im.transpose(0, 2, 3, 1)
 
     # VGG needs BGR
     mean = load_mean() # vgg19, BGR, tf ordering
     perm = np.argsort([2, 1, 0])
-    nb_dims = len(im.shape)
     if nb_dims == 3:
-        im = im[:, :, perm] - mean[0]
+        im = im[:, :, perm] 
+        im -= mean[0]
     elif nb_dims == 4:
-        im = im[:, :, :, perm] - mean
+        im = im[:, :, :, perm] 
+        im -= mean
     else:
         raise Exception('image should have 3 or 4 dimensions')
 
-    if size != None:
-        im = misc.imresize(im, size, interp='bilinear')
+    return im
 
-    return np.array(im)
-
-def deprocess(im, dim_ordering='tf', normalize=False):
+def deprocess(im, dim_ordering='tf'):
     im = np.copy(im)
 
     if dim_ordering == 'th':
         im = im.transpose((1, 2, 0))
 
     # Back to RGB
-    mean = load_mean()
     perm = np.argsort([2, 1, 0])
     nb_dims = len(im.shape)
     if nb_dims == 3:
-        im += mean[0]
+        im += load_mean()[0]
         im = im[:, :, perm]
     elif nb_dims == 4:
-        im += mean
+        im += load_mean()
         im = im[:, :, :, perm]
     else:
         raise Exception('image should have 3 or 4 dimensions')
 
-    if normalize:
-        im -= im.min() # [0, +Infinity]
-        im /= im.max() # [0, 1]
-        im *= 255
-    else:
-        im = im.clip(0, 255)
-
+    im = im.clip(0, 255)
     im = im.astype('uint8')
+
 
     return im
 

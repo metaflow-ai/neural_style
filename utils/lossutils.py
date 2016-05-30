@@ -97,11 +97,11 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
             losses['training_loss'].append(training_loss)
             if i % 25 == 0:
                 print('Iteration: %d/%d' % (i, max_iter) )
-                print('    training_loss: %f' % (training_loss))
                 for idx, loss in enumerate(data):
                     if idx < 2:
                         continue
-                    print('    loss %f: %f' % (idx - 1, loss))
+                    print('    loss %d: %f' % (idx - 1, loss))
+                print('    training_loss: %f' % (training_loss))
 
             if training_loss < losses['best_loss']:
                 losses['best_loss'] = training_loss
@@ -127,12 +127,12 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
             
             losses['training_loss'].append(training_loss)
             if gogh_inc_val % 25 == 0:
-                print('Iteration: %d/%d' % (gogh_inc_val, max_iter))
-                print('    training_loss: %f' % (training_loss))
+                print('Iteration: %d/%d' % (gogh_inc_val, max_iter) )
                 for idx, loss in enumerate(data):
                     if idx < 2:
                         continue
-                    print('    loss %f: %f' % (idx - 1, loss))
+                    print('    loss %d: %f' % (idx - 1, loss))
+                print('    training_loss: %f' % (training_loss))
 
             if training_loss < losses['best_loss']:
                 losses['best_loss'] = training_loss

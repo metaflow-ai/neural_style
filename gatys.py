@@ -7,7 +7,7 @@ from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 from utils.imutils import *
 from utils.lossutils import *
 
-optimizer = 'adam'
+optimizer = 'lbfgs'
 if optimizer == 'lbfgs':
     K.set_floatx('float64') # scipy needs float64 to use lbfgs
 
@@ -61,25 +61,25 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
         reg_TV = total_variation_error(input_layer, 2)
 
         print('Compiling VGG headless 5 for feat ' + layer_name_feat + ' and style ' + layer_name_style)
-        # At the same layer
-        # if alpha/beta >= 1e02 we only see style
-        # if alpha/beta <= 1e-04 we only see the picture
-        for alpha in [1e02, 1.]:
-            for beta in [5., 1.]:
-                for gamma in [1e-03, 0]:
+        for alpha in [1e2]:
+            for beta in [5.]:
+                for gamma in [1e-3]:
                     if alpha == beta and alpha != 1:
                         continue
                     print("alpha, beta, gamma:", alpha, beta, gamma)
 
                     print('Compiling model')
-                    loss = alpha * loss_style + beta * loss_feat + gamma * reg_TV
+                    ls = alpha * loss_style
+                    lf = beta * loss_feat
+                    rtv = gamma * reg_TV
+                    loss =  ls + lf + rtv
                     grads = K.gradients(loss, input_layer)
                     if optimizer == 'adam':
                         grads = norm_l2(grads)
-                    iterate = K.function([input_layer], [loss, grads, loss_style, loss_feat])
+                    iterate = K.function([input_layer], [loss, grads, lf, ls])
 
-                    config = {'learning_rate': 1e-00}
-                    best_input_data, losses = train_input(input_data, iterate, optimizer, config, max_iter=1500)
+                    config = {'learning_rate': 5e-00}
+                    best_input_data, losses = train_input(input_data, iterate, optimizer, config, max_iter=1000)
 
                     prefix = str(current_iter).zfill(4)
                     suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)

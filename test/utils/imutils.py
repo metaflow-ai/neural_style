@@ -1,12 +1,14 @@
 import os, sys, unittest
+import numpy as np
 
 dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/../..')
 
-from utils.imutils import *
+from utils.imutils import (load_images, load_image, load_mean, 
+                            preprocess, deprocess, create_noise_tensor)
 from scipy import misc
 
-from keras.backend.common import _FLOATX
+from keras import backend as K
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -29,10 +31,9 @@ class TestImUtils(unittest.TestCase):
 
     def test_preprocess_tf(self):
         blue_im = misc.imread(dir + '/../fixture/blue.png')
-        mean = load_mean()
-        red_im = np.array(misc.imread(dir + '/../fixture/red.png').astype(_FLOATX))
-        red_im = red_im - mean[0]
-        new_red_im = preprocess(blue_im, dim_ordering='tf')
+        red_im = np.array(misc.imread(dir + '/../fixture/red.png').astype(K.floatx()))
+        red_im = (red_im - load_mean()[0]).astype('uint8')
+        new_red_im = preprocess(blue_im, dim_ordering='tf').astype('uint8')
 
         self.assertEqual(True, (red_im==new_red_im).all())
 
@@ -57,7 +58,7 @@ class TestImUtils(unittest.TestCase):
         self.assertEqual(file.shape, (1, 600, 600, 3))
 
     def test_deprocess(self):
-        blue_im = misc.imread(dir + '/../fixture/blue.png').astype('float32')
+        blue_im = misc.imread(dir + '/../fixture/blue.png')
         im = preprocess(blue_im)
         im = deprocess(im)
 

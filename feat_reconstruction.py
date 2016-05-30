@@ -25,9 +25,9 @@ height = 256
 input_shape = (channels, width, height)
 batch = 4
 
-# data = load_hdf5_im(dataDir + '/output/0001_gatys_paper_featconv_4_1_alpha100.0_beta5.0_gamma0.001.hdf5')
-# save_image(dir + '/models/results/vgg19/a.png', deprocess(data, dim_ordering='th'))
-# save_image(dir + '/models/results/vgg19/b.png', deprocess(data, dim_ordering='th', normalize=True))
+# data = load_hdf5_im(dataDir + '/output/vgg19/0001_feat_conv_2_1_gamma0.hdf5')
+# save_image(dataDir + '/output/vgg19/feat1.png', deprocess(data, dim_ordering='th'))
+# save_image(dataDir + '/output/vgg19/feat2.png', deprocess(data, dim_ordering='th', add_mean=True))
 
 print('Loading a cat image')
 X_train = load_images(dataDir + '/overfit', size=(height, width), limit=1, dim_ordering='th')
@@ -60,7 +60,7 @@ for layer_name in layers_names:
     
     reg_TV = total_variation_error(input_layer, 2)
 
-    for gamma in [1e-05, 0]:
+    for gamma in [1e-5, 0]:
         print('gamma:' + str(gamma))
         print('Compiling VGG headless 1 for ' + layer_name + ' style reconstruction')
         loss_style = frobenius_error(grams(y_style).copy(), grams(out).copy())

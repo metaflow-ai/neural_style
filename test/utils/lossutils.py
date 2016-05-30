@@ -26,8 +26,8 @@ class TestImUtils(unittest.TestCase):
 
         x = K.placeholder(input.shape, name='x')
         loss = total_variation_error(x, 2)
-        gLoss = K.gradients(loss, x)
-        get_grads = theano.function([x], gLoss)
+        grad = K.gradients(loss, x)
+        get_grads = theano.function([x], grad)
 
         # GradInput result for beta = 2
         true_grad = np.array([[
