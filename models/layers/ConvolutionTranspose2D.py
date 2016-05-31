@@ -120,7 +120,7 @@ class ConvolutionTranspose2D(Layer):
     def build(self, input_shape):
         if self.dim_ordering == 'th':
             stack_size = input_shape[1]
-            self.W_shape = (self.nb_filter, stack_size, self.nb_row, self.nb_col)
+            self.W_shape = (stack_size, self.nb_filter, self.nb_row, self.nb_col)
         elif self.dim_ordering == 'tf':
             stack_size = input_shape[3]
             self.W_shape = (self.nb_row, self.nb_col, stack_size, self.nb_filter)

@@ -4,7 +4,7 @@ import numpy as np
 from keras import backend as K
 from keras.engine.training import collect_trainable_weights
 from keras.optimizers import Adam
-from keras.utils.visualize_util import plot as plot_model
+# from keras.utils.visualize_util import plot as plot_model
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 from models.style_transfer import (style_transfer_conv_transpose,
@@ -24,8 +24,8 @@ trainDir = dataDir + '/train'
 paintingsDir = dataDir + '/paintings'
 
 channels = 3
-width = 600
-height = 600
+width = 256
+height = 256
 input_shape = (channels, width, height)
 batch_size = 4
 max_number_of_epoch = 2
@@ -44,13 +44,13 @@ print("X_train_style shape:", X_train_style.shape)
 
 print('Loading style_transfer model')
 stWeightsFullpath = dir + '/models/st_vangogh_weights.hdf5'
-st_model = style_transfer_upsample(input_shape=input_shape)
-# st_model = style_transfer_conv_transpose(input_shape=input_shape)
+# st_model = style_transfer_upsample(input_shape=input_shape)
+st_model = style_transfer_conv_transpose(input_shape=input_shape)
 if os.path.isfile(stWeightsFullpath): 
     print("Loading weights")
     st_model.load_weights(stWeightsFullpath)
 init_weights = st_model.get_weights()
-plot_model(st_model, to_file=dir + '/st_model.png', show_shapes=True)
+# plot_model(st_model, to_file=dir + '/st_model.png', show_shapes=True)
 
 print('Loading VGG headless 5')
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
@@ -59,7 +59,7 @@ layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
 print('Layers found:' + ', '.join(layers_names))
 
 print('Creating training labels')
-style_layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_4']
+style_layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_3']
 style_outputs_layer = [grams(layer_dict[name].output) for name in style_layers_used]
 predict_style = K.function([vgg_model.input], style_outputs_layer)
 y_styles = predict_style([X_train_style])
@@ -78,7 +78,7 @@ fm_c31, fm_c32, fm_c33, fm_c34,
 fm_c41, fm_c42, fm_c43, fm_c44,
 fm_c51, fm_c52, fm_c53, fm_c54] = vgg_model(st_model.output)
 preds = [fm_c11, fm_c12, fm_c21, fm_c22, fm_c31, fm_c32, fm_c33, fm_c34, fm_c41, fm_c42, fm_c43, fm_c44, fm_c51, fm_c52, fm_c53, fm_c54]
-pred_styles = [fm_c12, fm_c22, fm_c34, fm_c44]
+pred_styles = [fm_c12, fm_c22, fm_c32, fm_c34, fm_c43]
 pred_feat = fm_c42
 
 print('Preparing training loss functions')
@@ -127,7 +127,7 @@ for alpha in [1e2]:
                 st_model, 
                 train_iteratee, 
                 cv_input_dir=None, 
-                max_iter=1500,
+                max_iter=4000,
                 batch_size=batch_size
             )
 
