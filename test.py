@@ -34,7 +34,7 @@ for weights_filename in weights_filenames:
     predict = K.function([st_model.input, K.learning_phase()], st_model.output)
 
     print('Predicting')
-    # results = st_model.predict(X_test) # Equivalent to predict([X_test, False])
+    # results_false = st_model.predict(X_test) # Equivalent to predict([X_test, False])
     results = predict([X_test, True])
 
     print('Dumping results')
@@ -43,7 +43,7 @@ for weights_filename in weights_filenames:
         fullOutPath = outputDir + '/' + prefix + "_" + str(idx) + ".png"
         save_image(fullOutPath, deprocess(im, dim_ordering='th'))
 
-        # fullOriPath = outputDir + '/' + prefix + "_ori.png"
-        # deprocess(fullOriPath, X_test[idx], False)
+        # fullFalsePath = outputDir + '/' + prefix + "_false.png"
+        # save_image(fullFalsePath, deprocess(results_false[idx], dim_ordering='th'))
 
         current_iter += 1

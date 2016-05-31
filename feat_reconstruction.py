@@ -46,7 +46,7 @@ print('Layers found:' + ', '.join(layers_names))
 input_layer = model.input
 
 print('Building white noise images')
-input_data = create_noise_tensor(height, width, channels).transpose(0, 3, 1, 2).astype(K.floatx())
+input_data = create_noise_tensor(height, width, channels, 'th')
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1
@@ -63,10 +63,10 @@ for layer_name in layers_names:
     for gamma in [1e-5, 0]:
         print('gamma:' + str(gamma))
         print('Compiling VGG headless 1 for ' + layer_name + ' style reconstruction')
-        loss_style = frobenius_error(grams(y_style).copy(), grams(out).copy())
+        loss_style = frobenius_error(grams(y_style), grams(out))
         loss_TV =  gamma * reg_TV
         total_loss_style = loss_style + loss_TV
-        grads_style = K.gradients(total_loss_style, input_layer)
+        grads_style = K.gradients(total_loss_style, input_layer)[0]
         if optimizer == 'adam':
             grads_style = norm_l2(grads_style)
         iterate_style = K.function([input_layer], [total_loss_style, grads_style])
@@ -75,7 +75,7 @@ for layer_name in layers_names:
         loss_feat = frobenius_error(y_feat, out)
         loss_TV =  gamma * reg_TV
         total_loss_feat = loss_feat + loss_TV
-        grads_feat = K.gradients(total_loss_feat, input_layer)
+        grads_feat = K.gradients(total_loss_feat, input_layer)[0]
         if optimizer == 'adam':
             grads_feat = norm_l2(grads_feat)
         iterate_feat = K.function([input_layer], [total_loss_feat, grads_feat])

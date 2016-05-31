@@ -118,8 +118,13 @@ def load_mean(name='vgg19', dim_ordering='tf'):
 def save_image(fullOutPath, im):
     imsave(fullOutPath, im)
 
-def create_noise_tensor(height, width, channels):
-    return np.random.randn(1, height, width, channels) * 0.001
+def create_noise_tensor(height, width, channels, dim_ordering='tf'):
+    if dim_ordering == 'tf':
+        return np.random.randn(1, height, width, channels).astype(K.floatx()) * 0.001
+    elif dim_ordering == 'th':
+        return np.random.randn(1, channels, height, width).astype(K.floatx()) * 0.001
+    else:
+        raise Exception('Invalid dim_ordering value:' + dim_ordering)
 
 def load_hdf5_im(fullpath):
     file = h5py.File(fullpath, 'r')

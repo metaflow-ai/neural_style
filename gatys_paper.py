@@ -4,8 +4,12 @@ from keras import backend as K
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
-from utils.imutils import *
-from utils.lossutils import *
+from utils.imutils import (load_images, create_noise_tensor, 
+                    dump_as_hdf5, deprocess, save_image,
+                    plot_losses)
+from utils.lossutils import (frobenius_error, total_variation_error, 
+                            grams, norm_l2, train_input
+                            )
 
 optimizer = 'lbfgs'
 if optimizer == 'lbfgs':
@@ -42,8 +46,10 @@ layer_dict, layers_names = get_layer_data(model, 'conv_')
 print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
-style_layers_used = ['conv_1_1', 'conv_2_1', 'conv_3_1', 'conv_4_1', 'conv_5_1']
-feat_layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_2', 'conv_4_2', 'conv_5_2']
+style_layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_3']
+feat_layers_used = ['conv_3_4', 'conv_4_2', 'conv_4_4']
+# before conv_3_2 layers are too "clean" for human perception
+# from conv_5_1 layers doesn't hold enough information to rebuild the structure of the photo
 style_outputs_layer = [layer_dict[name].output for name in style_layers_used]
 feat_outputs_layer = [layer_dict[name].output for name in feat_layers_used]
 
@@ -54,53 +60,51 @@ predict_feat = K.function([input_layer], feat_outputs_layer)
 train_feat_labels = predict_feat([X_train])
 
 print('Preparing training loss functions')
-train_loss_style1 = frobenius_error(grams(train_style_labels[0]), grams(style_outputs_layer[0]))
-train_loss_style2 = frobenius_error(grams(train_style_labels[1]), grams(style_outputs_layer[1]))
-train_loss_style3 = frobenius_error(grams(train_style_labels[2]), grams(style_outputs_layer[2]))
-train_loss_style4 = frobenius_error(grams(train_style_labels[3]), grams(style_outputs_layer[3]))
-train_loss_style5 = frobenius_error(grams(train_style_labels[4]), grams(style_outputs_layer[4]))
+train_loss_styles = []
+for idx, train_style_label in enumerate(train_style_labels):
+    train_loss_styles.append(
+        frobenius_error(
+            grams(train_style_label), 
+            grams(style_outputs_layer[idx])
+        )
+    )
 
 reg_TV = total_variation_error(input_layer, 2)
 
 print('Building white noise images')
-input_data = create_noise_tensor(height, width, channels).transpose(0, 3, 1, 2).astype(K.floatx())
+input_data = create_noise_tensor(height, width, channels, 'th')
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1
 for idx, feat_output in enumerate(feat_outputs_layer):
-    if idx != 3:
-        # conv_1_2 and conv_2_2  are too "clean" for human perception
-        # conv_3_4 tends to be too "clean"
-        # conv_5_4 layer doesn't hold enough information to rebuild the structure of the photo
-        continue
     layer_name_feat = feat_layers_used[idx]
     train_loss_feat = frobenius_error(train_feat_labels[idx], feat_output)
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
     for alpha in [1e2]:
         for beta in [5e0]:
             for gamma in [1e-3]:
-                if alpha == beta and alpha != 1:
-                    continue
                 print("alpha, beta, gamma:", alpha, beta, gamma)
 
-                print('Compiling model')
-                tls1 = train_loss_style1 * alpha * 0.2
-                tls2 = train_loss_style2 * alpha * 0.2
-                tls3 = train_loss_style3 * alpha * 0.2
-                tls4 = train_loss_style4 * alpha * 0.2
-                tls5 = train_loss_style5 * alpha * 0.2
-                tlf = train_loss_feat * beta
+                print('Computing train loss')
+                tls = [train_loss_style * alpha * 1 / len(train_loss_styles) for train_loss_style in train_loss_styles]
+                tlf = [train_loss_feat * beta]
                 rtv = reg_TV * gamma
-                train_loss =  tls1 + tls2 + tls3 + tls4 + tls5 + tlf + rtv
+                train_loss =  sum(tls + tlf) + rtv
 
+                print('Computing gradients')
                 grads = K.gradients(train_loss, input_layer)
                 if optimizer == 'adam':
                     grads = norm_l2(grads)
-                train_iteratee = K.function([input_layer], [train_loss, grads, tls1, tls2, tls3, tls4, tls5, tlf])
+                inputs = [input_layer]
+                outputs = [train_loss, grads] + tlf + tls
+
+                print('Computing iteratee function')
+                train_iteratee = K.function(inputs, outputs)
 
                 config = {'learning_rate': 5e-01}
                 best_input_data, losses = train_input(input_data, train_iteratee, optimizer, config, max_iter=1000)
 
+                print('Dumping data')
                 prefix = str(current_iter).zfill(4)
                 suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
                 filename = prefix + '_gatys_paper_feat' + layer_name_feat + suffix

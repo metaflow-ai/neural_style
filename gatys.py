@@ -1,11 +1,16 @@
-import os
+import os, argparse
+import numpy as np
 
 from keras import backend as K
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
-from utils.imutils import *
-from utils.lossutils import *
+from utils.imutils import (load_image, create_noise_tensor, 
+                    dump_as_hdf5, deprocess, save_image,
+                    plot_losses)
+from utils.lossutils import (frobenius_error, total_variation_error, 
+                            grams, norm_l2, train_input
+                            )
 
 optimizer = 'lbfgs'
 if optimizer == 'lbfgs':
@@ -18,30 +23,39 @@ resultsDir = dataDir + '/output/vgg19'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
 
-
 channels = 3
 width = 256
 height = 256
 input_shape = (channels, width, height)
 batch = 4
 
+parser = argparse.ArgumentParser(
+    description='Neural artistic style. Generates an image by combining '
+                'the content of an image and the style of another.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument('--content', default=dataDir + '/overfit/000.jpg', type=str, help='Content image.')
+parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
+parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='Subsampling scheme.')
+args = parser.parse_args()
+
 print('Loading a cat image')
-X_train = load_images(dataDir + '/overfit', size=(height, width), limit=1, dim_ordering='th', verbose=True)
+X_train = np.array([load_image(args.content, size=(height, width), dim_ordering='th', verbose=True)])
 print("X_train shape:", X_train.shape)
 
 print('Loading painting')
-X_train_style = load_images(dataDir + '/paintings', size=(height, width), limit=1, dim_ordering='th', verbose=True)
+X_train_style = np.array([load_image(args.style, size=(height, width), dim_ordering='th', verbose=True)])
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
-model = VGG_19_headless_5(modelWeights, trainable=False)
+model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type=args.pooling_type)
 layer_dict, layers_names = get_layer_data(model, 'conv_')
 
 input_layer = model.input
 
 print('Building white noise images')
-input_data = create_noise_tensor(height, width, channels).transpose(0, 3, 1, 2).astype(K.floatx())
+input_data = create_noise_tensor(height, width, channels, 'th')
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1
@@ -78,7 +92,7 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
                         grads = norm_l2(grads)
                     iterate = K.function([input_layer], [loss, grads, lf, ls])
 
-                    config = {'learning_rate': 5e-00}
+                    config = {'learning_rate': 5e-1}
                     best_input_data, losses = train_input(input_data, iterate, optimizer, config, max_iter=1000)
 
                     prefix = str(current_iter).zfill(4)

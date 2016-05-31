@@ -15,10 +15,10 @@ from utils.lossutils import (grams, frobenius_error,
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
-resultsDir = dir + '/models/results/st'
+dataDir = dir + '/data'
+resultsDir = dir + '/outpout'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
-dataDir = dir + '/data'
 trainDir = dataDir + '/train'
 paintingsDir = dataDir + '/paintings'
 
@@ -34,7 +34,7 @@ stWeightsFullpath = dir + '/models/st_vangogh_weights.hdf5'
 st_model = style_transfer_upsample(input_shape=input_shape)
 if os.path.isfile(stWeightsFullpath): 
     print("Loading weights")
-    st_model = st_model.load_weights(stWeightsFullpath)
+    st_model.load_weights(stWeightsFullpath)
 init_weights = st_model.get_weights()
 
 print('Loading painting')
@@ -49,10 +49,10 @@ layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
 print('Layers found:' + ', '.join(layers_names))
 
 print('Creating training labels')
-style_layers_used = ['conv_1_1', 'conv_2_1', 'conv_3_1', 'conv_4_1', 'conv_5_1']
+style_layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_4']
 style_outputs_layer = [grams(layer_dict[name].output) for name in style_layers_used]
 predict_style = K.function([vgg_model.input], style_outputs_layer)
-y_style = predict_style([X_train_style])
+y_styles = predict_style([X_train_style])
 
 [c11, c12, 
 c21, c22, 
@@ -68,15 +68,18 @@ fm_c31, fm_c32, fm_c33, fm_c34,
 fm_c41, fm_c42, fm_c43, fm_c44,
 fm_c51, fm_c52, fm_c53, fm_c54] = vgg_model(st_model.output)
 preds = [fm_c11, fm_c12, fm_c21, fm_c22, fm_c31, fm_c32, fm_c33, fm_c34, fm_c41, fm_c42, fm_c43, fm_c44, fm_c51, fm_c52, fm_c53, fm_c54]
-pred_style = [fm_c11, fm_c21, fm_c31, fm_c41, fm_c51]
+pred_styles = [fm_c12, fm_c22, fm_c34, fm_c44]
 pred_feat = fm_c42
 
 print('Preparing training loss functions')
-train_loss_style1 = frobenius_error(y_style[0], grams(pred_style[0]))
-train_loss_style2 = frobenius_error(y_style[1], grams(pred_style[1]))
-train_loss_style3 = frobenius_error(y_style[2], grams(pred_style[2]))
-train_loss_style4 = frobenius_error(y_style[3], grams(pred_style[3]))
-train_loss_style5 = frobenius_error(y_style[4], grams(pred_style[4]))
+train_loss_styles = []
+for idx, y_style in enumerate(y_styles):
+    train_loss_styles.append(
+        frobenius_error(
+            y_style, 
+            grams(pred_styles[idx])
+        )
+    )
 
 train_loss_feat = frobenius_error(y_feat, pred_feat)
 
@@ -93,21 +96,19 @@ for alpha in [1e2]:
         
             st_model.set_weights(init_weights)
             print('Compiling train loss')
-            tls1 = train_loss_style1 * alpha * 0.2
-            tls2 = train_loss_style2 * alpha * 0.2
-            tls3 = train_loss_style3 * alpha * 0.2
-            tls4 = train_loss_style4 * alpha * 0.2
-            tls5 = train_loss_style5 * alpha * 0.2
-            tlf = train_loss_feat * beta
+            tls = [train_loss_style * alpha * 1 / len(train_loss_styles) for train_loss_style in train_loss_styles]
+            tlf = [train_loss_feat * beta]
             rtv = reg_TV * gamma
-            train_loss =  tls1 + tls2 + tls3 + tls4 + tls5 + tlf + rtv
+            train_loss =  sum(tls + tlf) + rtv
 
             print('Compiling Adam update')
             adam = Adam(lr=1e-03)
             updates = adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
 
             print('Compiling train function')
-            train_iteratee = K.function([st_model.input, K.learning_phase()], [train_loss, tlf, tls1, tls2, tls3, tls4, tls5], updates=updates)
+            inputs = [st_model.input, K.learning_phase()]
+            outputs = [train_loss] + tlf + tls
+            train_iteratee = K.function(inputs, outputs, updates=updates)
 
             print('Starting training')
             best_trainable_weights, losses = train_weights(
@@ -117,7 +118,7 @@ for alpha in [1e2]:
                 train_iteratee, 
                 cv_input_dir=None, 
                 max_iter=1500,
-                batch_size=4
+                batch_size=batch_size
             )
 
             prefix = str(current_iter).zfill(4)

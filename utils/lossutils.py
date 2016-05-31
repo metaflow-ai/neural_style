@@ -145,7 +145,7 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
     print("final loss:", losses['best_loss'])
     return best_input_data, losses
 
-def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max_iter=2000, batch_size=4):
+def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max_iter=2000, batch_size=4, callbacks=[]):
     losses = {'training_loss': [], 'cv_loss': [], 'best_loss': 1e15}
     
     best_trainable_weights = model.get_weights()
@@ -161,7 +161,6 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
         progbar_values = []
 
         ims = []
-        current_batch = 0
         for idx, fullpath in enumerate(files):
             im = load_image(fullpath, size=size, dim_ordering='th')
             ims.append(im)
@@ -188,9 +187,14 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
                     losses['best_loss'] = training_loss
                     best_trainable_weights = model.get_weights()
 
-                current_batch += 1
+                for tuple in callbacks:
+                    if current_iter % tuple[0] == 0:
+                        tuple[1]({
+                            current_iter:current_iter,
+                            losses: losses,
+                            model: model
+                        })
                 ims = []
-
                 if current_iter >= max_iter:
                     need_more_training = False
                     break

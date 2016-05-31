@@ -6,14 +6,14 @@ from keras.layers.convolutional import (Convolution2D, MaxPooling2D, AveragePool
 from keras.layers import Input
 from keras.models import Model
 
-def VGG_19_headless_5(weights_path=None, input_shape=(3, 256, 256), trainable=False, poolingType='max'):
+def VGG_19_headless_5(weights_path=None, input_shape=(3, 256, 256), trainable=False, pooling_type='max'):
     input = Input(shape=input_shape, name='input', dtype=K.floatx())
 
     zp11 = ZeroPadding2D((1, 1), trainable=trainable)(input)
     c11 = Convolution2D(64, 3, 3, activation='relu', trainable=trainable, name="conv_1_1")(zp11)
     zp12 = ZeroPadding2D((1, 1))(c11)
     c12 = Convolution2D(64, 3, 3, activation='relu', trainable=trainable, name="conv_1_2")(zp12)
-    if poolingType == 'average':
+    if pooling_type == 'avg':
         p1 = AveragePooling2D((2, 2), strides=(2, 2))(c12)
     else:
         p1 = MaxPooling2D((2, 2), strides=(2, 2))(c12)
@@ -22,7 +22,7 @@ def VGG_19_headless_5(weights_path=None, input_shape=(3, 256, 256), trainable=Fa
     c21 = Convolution2D(128, 3, 3, activation='relu', trainable=trainable, name="conv_2_1")(zp21)
     zp22 = ZeroPadding2D((1, 1))(c21)
     c22 = Convolution2D(128, 3, 3, activation='relu', trainable=trainable, name="conv_2_2")(zp22)
-    if poolingType == 'average':
+    if pooling_type == 'avg':
         p2 = AveragePooling2D((2, 2), strides=(2, 2))(c22)
     else:
         p2 = MaxPooling2D((2, 2), strides=(2, 2))(c22)
@@ -35,7 +35,7 @@ def VGG_19_headless_5(weights_path=None, input_shape=(3, 256, 256), trainable=Fa
     c33 = Convolution2D(256, 3, 3, activation='relu', trainable=trainable, name="conv_3_3")(zp33)
     zp34 = ZeroPadding2D((1, 1))(c33)
     c34 = Convolution2D(256, 3, 3, activation='relu', trainable=trainable, name="conv_3_4")(zp34)
-    if poolingType == 'average':
+    if pooling_type == 'avg':
         p3 = AveragePooling2D((2, 2), strides=(2, 2))(c34)
     else:
         p3 = MaxPooling2D((2, 2), strides=(2, 2))(c34)
@@ -49,7 +49,7 @@ def VGG_19_headless_5(weights_path=None, input_shape=(3, 256, 256), trainable=Fa
     c43 = Convolution2D(512, 3, 3, activation='relu', trainable=trainable, name="conv_4_3")(zp43)
     zp44 = ZeroPadding2D((1, 1))(c43)
     c44 = Convolution2D(512, 3, 3, activation='relu', trainable=trainable, name="conv_4_4")(zp44)
-    if poolingType == 'average':
+    if pooling_type == 'avg':
         p4 = AveragePooling2D((2, 2), strides=(2, 2))(c44)
     else:
         p4 = MaxPooling2D((2, 2), strides=(2, 2))(c44)
