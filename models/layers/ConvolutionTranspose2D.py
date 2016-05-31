@@ -3,6 +3,12 @@ from keras.backend.common import _FLOATX
 from keras import activations, initializations, regularizers, constraints
 from keras.engine import Layer, InputSpec
 
+if K._BACKEND == 'theano':
+    import theano
+    import theano.tensor as T
+else:
+    import tensorflow as tf
+
 def conv_transpose_out_length(input_length, filter_size, border_mode, stride):
     if input_length is None:
         return None
@@ -84,11 +90,6 @@ class ConvolutionTranspose2D(Layer):
                  W_regularizer=None, b_regularizer=None, activity_regularizer=None,
                  W_constraint=None, b_constraint=None,
                  bias=True, **kwargs):
-
-        if K._BACKEND == 'theano':
-             raise Exception('Theano backend is not supported for convolution transpose')
-        else:
-            import tensorflow as tf
 
         if border_mode not in {'valid', 'same'}:
             raise Exception('Invalid border mode for Convolution2D:', border_mode)
@@ -178,9 +179,15 @@ class ConvolutionTranspose2D(Layer):
             raise Exception('Invalid dim_ordering: ' + self.dim_ordering)
 
     def call(self, x, mask=None):
-        output = self.conv2d_transpose(x, self.W, strides=self.subsample,
-                          border_mode=self.border_mode,
-                          dim_ordering=self.dim_ordering)
+        if K._BACKEND == 'theano':
+            output = self.conv2d_transpose_th(x, self.W, strides=self.subsample,
+                              border_mode=self.border_mode,
+                              dim_ordering=self.dim_ordering)
+        else:
+            output = self.conv2d_transpose_tf(x, self.W, strides=self.subsample,
+                              border_mode=self.border_mode,
+                              dim_ordering=self.dim_ordering)
+
         if self.bias:
             if self.dim_ordering == 'th':
                 output += K.reshape(self.b, (1, self.nb_filter, 1, 1))
@@ -210,7 +217,7 @@ class ConvolutionTranspose2D(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
-    def conv2d_transpose(self, x, kernel, strides=(1, 1), border_mode='valid', dim_ordering='th'):
+    def conv2d_transpose_tf(self, x, kernel, strides=(1, 1), border_mode='valid', dim_ordering='th'):
         if border_mode == 'same':
             padding = 'SAME'
         elif border_mode == 'valid':
@@ -224,7 +231,7 @@ class ConvolutionTranspose2D(Layer):
         else:
             try:
                 input_shape = K.int_shape(x)
-            except Exception, e:
+            except Exception as e:
                 input_shape = K.shape(x)
         output_shape = self.get_output_shape_for(input_shape)
 
@@ -233,6 +240,8 @@ class ConvolutionTranspose2D(Layer):
             x = tf.cast(x, 'float32')
             kernel = tf.cast(kernel, 'float32')
 
+        batch_size = tf.shape(x)[0]
+        output_shape_tensor = tf.pack([batch_size, output_shape[2], output_shape[3], output_shape[1]])
         if dim_ordering == 'th':
             # TF uses the last dimension as channel dimension,
             # instead of the 2nd one.
@@ -240,8 +249,6 @@ class ConvolutionTranspose2D(Layer):
             # TF input shape: (samples, rows, cols, input_depth)
             # TH kernel shape: (depth, input_depth, rows, cols)
             # TF kernel shape: (rows, cols, input_depth, depth)
-            batch_size = tf.shape(x)[0]
-            output_shape_tensor = tf.pack([batch_size, output_shape[2], output_shape[3], output_shape[1]])
             x = tf.transpose(x, (0, 2, 3, 1))
             kernel = tf.transpose(kernel, (2, 3, 0, 1))
             x = tf.nn.conv2d_transpose(x, kernel, output_shape_tensor, strides, padding=padding)
@@ -249,7 +256,7 @@ class ConvolutionTranspose2D(Layer):
             x = tf.transpose(x, (0, 3, 1, 2))
             
         elif dim_ordering == 'tf':
-            x = tf.nn.conv2d(x, kernel, strides, padding=padding)
+            x = tf.nn.conv2d_transpose(x, kernel, output_shape_tensor, strides, padding=padding)
         else:
             raise Exception('Unknown dim_ordering: ' + str(dim_ordering))
 
@@ -257,3 +264,31 @@ class ConvolutionTranspose2D(Layer):
             x = tf.cast(x, 'float64')
 
         return x
+
+    def conv2d_transpose_th(self, x, kernel, strides=(1, 1), border_mode='valid', dim_ordering='th'):
+        if border_mode == 'same':
+            th_border_mode = 'half'
+            np_kernel = kernel.eval()
+        elif border_mode == 'valid':
+            th_border_mode = 'valid'
+        else:
+            raise Exception('Border mode not supported: ' + str(border_mode))
+
+        input_shape = K.shape(x)
+        output_shape = self.get_output_shape_for(input_shape)
+        output_shape = (None, ) + output_shape[1:]
+
+        conv_t_out = T.nnet.abstract_conv.conv2d_grad_wrt_inputs(
+            x, kernel, output_shape, filter_shape=None, 
+            border_mode=th_border_mode, subsample=strides, filter_flip=True)
+
+        if border_mode == 'same':
+            if np_kernel.shape[2] % 2 == 0:
+                conv_t_out = conv_t_out[:, :, :(x.shape[2] + strides[0] - 1) // strides[0], :]
+            if np_kernel.shape[3] % 2 == 0:
+                conv_t_out = conv_t_out[:, :, :, :(x.shape[3] + strides[1] - 1) // strides[1]]
+
+        if dim_ordering == 'tf':
+            conv_t_out = conv_t_out.dimshuffle((0, 2, 3, 1))
+
+        return conv_t_out

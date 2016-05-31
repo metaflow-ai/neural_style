@@ -9,6 +9,7 @@ data/**/*.hdf5
 vgg19/vgg-19_*weights*
 models/results/*
 models/*.hdf5
+tmp/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

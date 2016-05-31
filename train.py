@@ -1,15 +1,16 @@
-import os, json, gc
+import os, json, gc, argparse
+import numpy as np
 
 from keras import backend as K
 from keras.engine.training import collect_trainable_weights
 from keras.optimizers import Adam
-# from keras.utils.visualize_util import plot
+from keras.utils.visualize_util import plot as plot_model
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 from models.style_transfer import (style_transfer_conv_transpose,
                         style_transfer_upsample)
 
-from utils.imutils import plot_losses, load_images, preprocess
+from utils.imutils import plot_losses, load_image
 from utils.lossutils import (grams, frobenius_error, 
                     train_weights, total_variation_error)
 
@@ -29,18 +30,27 @@ input_shape = (channels, width, height)
 batch_size = 4
 max_number_of_epoch = 2
 
+parser = argparse.ArgumentParser(
+    description='Neural artistic style. Generates an image by combining '
+                'the content of an image and the style of another.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
+parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='Subsampling scheme.')
+args = parser.parse_args()
+
+X_train_style = np.array([load_image(args.style, size=(height, width), dim_ordering='th', verbose=True)])
+print("X_train_style shape:", X_train_style.shape)
+
 print('Loading style_transfer model')
 stWeightsFullpath = dir + '/models/st_vangogh_weights.hdf5'
 st_model = style_transfer_upsample(input_shape=input_shape)
+# st_model = style_transfer_conv_transpose(input_shape=input_shape)
 if os.path.isfile(stWeightsFullpath): 
     print("Loading weights")
     st_model.load_weights(stWeightsFullpath)
 init_weights = st_model.get_weights()
-
-print('Loading painting')
-X_train_style = load_images(dataDir + '/paintings', size=(height, width), dim_ordering='th', verbose=True)
-X_train_style = X_train_style[7:8]
-print("X_train_style shape:", X_train_style.shape)
+plot_model(st_model, to_file=dir + '/st_model.png', show_shapes=True)
 
 print('Loading VGG headless 5')
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'

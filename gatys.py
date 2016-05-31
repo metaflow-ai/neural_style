@@ -39,11 +39,9 @@ parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_sc
 parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='Subsampling scheme.')
 args = parser.parse_args()
 
-print('Loading a cat image')
 X_train = np.array([load_image(args.content, size=(height, width), dim_ordering='th', verbose=True)])
 print("X_train shape:", X_train.shape)
 
-print('Loading painting')
 X_train_style = np.array([load_image(args.style, size=(height, width), dim_ordering='th', verbose=True)])
 print("X_train_style shape:", X_train_style.shape)
 

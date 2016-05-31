@@ -9,7 +9,7 @@ from keras.models import Model
 from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
 
 
-def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 256, 256)):
+def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 600, 600)):
     input = Input(shape=input_shape, name='input', dtype='float32')
 
     # Downsampling
@@ -46,7 +46,7 @@ def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 256, 256)):
     c32 = Convolution2D(128, 3, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a31)
     bn32 = BatchNormalization(axis=1)(c32)
-    # out3 = Activation('relu')(bn32)
+    # a32 = Activation('relu')(bn32)
     out3 = merge([out2, bn32], mode='sum')
 
     c41 = Convolution2D(128, 3, 3, 
@@ -56,7 +56,7 @@ def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 256, 256)):
     c42 = Convolution2D(128, 3, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a41)
     bn42 = BatchNormalization(axis=1)(c42)
-    # out4 = Activation('relu')(bn42)
+    # a42 = Activation('relu')(bn42)
     out4 = merge([out3, bn42], mode='sum')
 
     c51 = Convolution2D(128, 3, 3, 
@@ -66,7 +66,7 @@ def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 256, 256)):
     c52 = Convolution2D(128, 3, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a51)
     bn52 = BatchNormalization(axis=1)(c52)
-    # out5 = Activation('relu')(bn52)
+    # a52 = Activation('relu')(bn52)
     out5 = merge([out4, bn52], mode='sum')
 
     c61 = Convolution2D(128, 3, 3, 
@@ -76,10 +76,9 @@ def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 256, 256)):
     c62 = Convolution2D(128, 3, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a61)
     bn62 = BatchNormalization(axis=1)(c62)
-    # out6 = Activation('relu')(bn62)
+    # a62 = Activation('relu')(bn62)
     out6 = merge([out5, bn62], mode='sum')
 
-    # This is not a deconvolution (but might be close enough)
     ct71 = ConvolutionTranspose2D(64, 3, 3, 
         init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(out6)
     bn71 = BatchNormalization(axis=1)(ct71)
@@ -101,7 +100,7 @@ def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 256, 256)):
     return model
 
 
-def style_transfer_upsample(weights_path=None, input_shape=(3, 256, 256)):
+def style_transfer_upsample(weights_path=None, input_shape=(3, 600, 600)):
     input = Input(shape=input_shape, name='input', dtype='float32')
 
     # Downsampling
