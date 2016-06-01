@@ -8,7 +8,7 @@ if K._BACKEND == 'theano':
 else:
     import tensorflow as tf
 
-from utils.imutils import load_image
+from utils.imutils import load_image_st
 from utils.optimizers import adam
 from scipy.optimize import fmin_l_bfgs_b
 
@@ -154,6 +154,7 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
     current_iter = 0
     current_epoch = 1
     files = [input_dir + '/' + name for name in os.listdir(input_dir) if len(re.findall('\.(jpe?g|png)$', name))]
+    batch_size = min(batch_size, len(files))
     print('total_files %d' % len(files))
 
     max_epoch = math.ceil((batch_size * max_iter) / len(files))
@@ -165,7 +166,8 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
 
         ims = []
         for idx, fullpath in enumerate(files):
-            im = load_image(fullpath, size=size, dim_ordering='th')
+            
+            im = load_image_st(fullpath, size=size, verbose=False) # th ordering, BGR
             ims.append(im)
             if len(ims) >= batch_size or idx == len(files) - 1:
                 current_iter += 1

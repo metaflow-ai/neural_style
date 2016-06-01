@@ -7,10 +7,9 @@ from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
-from models.style_transfer import (style_transfer_conv_transpose,
-                        style_transfer_upsample)
+from models.style_transfer import (style_transfer_conv_transpose)
 
-from utils.imutils import plot_losses, load_image
+from utils.imutils import plot_losses, load_image, load_mean
 from utils.lossutils import (grams, frobenius_error, 
                     train_weights, total_variation_error)
 
@@ -25,8 +24,8 @@ overfitDir = dataDir + '/overfit'
 paintingsDir = dataDir + '/paintings'
 
 channels = 3
-width = 256
-height = 256
+width = 512
+height = 512
 input_shape = (channels, width, height)
 batch_size = 8
 
@@ -44,8 +43,8 @@ print("X_train_style shape:", X_train_style.shape)
 
 print('Loading style_transfer model')
 stWeightsFullpath = dir + '/models/st_vangogh_weights.hdf5'
-# st_model = style_transfer_upsample(input_shape=input_shape)
-st_model = style_transfer_conv_transpose(input_shape=input_shape)
+
+st_model = style_transfer_conv_transpose(input_shape=input_shape) # th ordering, BGR
 if os.path.isfile(stWeightsFullpath): 
     print("Loading weights")
     st_model.load_weights(stWeightsFullpath)
@@ -62,21 +61,24 @@ print('Creating training labels')
 style_layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_3']
 style_outputs_layer = [grams(layer_dict[name].output) for name in style_layers_used]
 predict_style = K.function([vgg_model.input], style_outputs_layer)
-y_styles = predict_style([X_train_style])
+y_styles = predict_style([X_train_style]) # sub mean, th ordering, BGR
 
+mean = load_mean(name='vgg19', dim_ordering='th') # th ordering, BGR
+vgg_content_input = st_model.input - mean # th, BGR ordering, sub mean
 [c11, c12, 
 c21, c22, 
 c31, c32, c33, c34, 
 c41, c42, c43, c44,
-c51, c52, c53, c54] = vgg_model(st_model.input)
+c51, c52, c53, c54] = vgg_model(vgg_content_input)
 y_feat = c42
 
 print('Building full model')
+preprocessed_output = st_model.output - mean # th, BGR ordering, sub mean
 [fm_c11, fm_c12, 
 fm_c21, fm_c22, 
 fm_c31, fm_c32, fm_c33, fm_c34,
 fm_c41, fm_c42, fm_c43, fm_c44,
-fm_c51, fm_c52, fm_c53, fm_c54] = vgg_model(st_model.output)
+fm_c51, fm_c52, fm_c53, fm_c54] = vgg_model(preprocessed_output)
 preds = [fm_c11, fm_c12, fm_c21, fm_c22, fm_c31, fm_c32, fm_c33, fm_c34, fm_c41, fm_c42, fm_c43, fm_c44, fm_c51, fm_c52, fm_c53, fm_c54]
 pred_styles = [fm_c12, fm_c22, fm_c32, fm_c34, fm_c43]
 pred_feat = fm_c42
@@ -93,13 +95,13 @@ for idx, y_style in enumerate(y_styles):
 
 train_loss_feat = frobenius_error(y_feat, pred_feat)
 
-reg_TV = total_variation_error(st_model.output, 2)
+reg_TV = total_variation_error(preprocessed_output, 2)
 
 print('Iterating over hyper parameters')
 current_iter = 0
-for alpha in [1e1, 1e0, 1e-2]:
+for alpha in [1e2, 1e1]:
     for beta in [5.]:
-        for gamma in [1e-03]:
+        for gamma in [1e-03, 1e-05]:
             print("alpha, beta, gamma:", alpha, beta, gamma)
 
             gc.collect()

@@ -28,7 +28,7 @@ def memoize(obj):
 
     return memoizer
 
-def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=False):
+def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=False, st=False):
     ims = []
     filenames = [f for f in os.listdir(absPath) if len(re.findall('\.(jpe?g|png)$', f))]
     for idx, filename in enumerate(filenames):
@@ -36,7 +36,10 @@ def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=F
             break
         
         fullpath = absPath + '/' + filename
-        im = load_image(fullpath, size, dim_ordering, verbose)
+        if st:
+            im = load_image(fullpath, size, dim_ordering, verbose)
+        else:
+            im = load_image_st(fullpath, size, verbose)
         ims.append(im)
 
     return np.array(ims)
@@ -46,19 +49,32 @@ def load_image(fullpath, size=(600, 600), dim_ordering='tf', verbose=False):
         print('Loading ' + fullpath)
     # VGG needs BGR data
     im = misc.imread(fullpath, mode='RGB') # height, width, channels
-    im = preprocess(im, size)
+    im = preprocess(im.copy(), size)
 
     if dim_ordering == 'th':
         im = im.transpose(2, 0, 1)
 
     return im
 
+def load_image_st(fullpath, size=(600, 600), verbose=False):
+    if verbose:
+        print('Loading ' + fullpath)
+
+    im = misc.imread(fullpath, mode='RGB') # tf ordering, RGB
+    if size != None:
+        im = misc.imresize(im, size, interp='bilinear')
+    perm = np.argsort([2, 1, 0])
+    im = im[:, :, perm] # th ordering, RGB
+    im = im.transpose(2, 0, 1) # th ordering, BGR
+
+    return im.copy()
+
+
 # im should be in RGB order
 # dim_ordering: How "im" is ordered
 def preprocess(im, size=None, dim_ordering='tf'):
     if size != None:
         im = misc.imresize(im, size, interp='bilinear')
-
     im = im.copy().astype(K.floatx())
 
     nb_dims = len(im.shape)
@@ -111,7 +127,7 @@ def deprocess(im, dim_ordering='tf'):
 @memoize
 def load_mean(name='vgg19', dim_ordering='tf'):
     if name == 'vgg19':
-        return VGG_19_mean(dim_ordering)
+        return VGG_19_mean(dim_ordering) # BGR ordering
     else:
         raise Exception('Invalid mean name:' + name)
 

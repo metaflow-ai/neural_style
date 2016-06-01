@@ -1,4 +1,5 @@
 import os, re
+import numpy as np
 
 from keras import backend as K
 
@@ -13,17 +14,19 @@ if not os.path.isdir(weightsDir):
 outputDir = dataDir + '/output'
 if not os.path.isdir(outputDir): 
     os.makedirs(outputDir)
+
+overfitDir = dataDir + '/overfit'    
 testDir = dataDir + '/test'
 
 channels = 3
-width = 600
-height = 600
+width = 256
+height = 256
 input_shape = (channels, width, height)
-batch = 4
 
-print('Loading test set')
-X_test = load_images(testDir, limit=20, size=(height, width), dim_ordering='th', verbose=True)
+X_overfit = load_images(overfitDir, size=(height, width), dim_ordering='th', verbose=True, st=True)
+X_test = load_images(testDir, limit=20, size=(height, width), dim_ordering='th', verbose=True, st=True)
 print('X_test.shape: ' + str(X_test.shape))
+print('X_overfit.shape: ' + str(X_overfit.shape))
 
 
 weights_filenames = [f for f in os.listdir(weightsDir) if len(re.findall('.*weights.*\.hdf5$', f))]
@@ -37,14 +40,22 @@ for weights_filename in weights_filenames:
     print('Predicting')
     # results_false = st_model.predict(X_test) # Equivalent to predict([X_test, False])
     results = predict([X_test, True])
+    results_overfit = predict([X_overfit, True])
 
     print('Dumping results')
     for idx, im in enumerate(results):
         prefix = str(current_iter).zfill(4)
         fullOutPath = outputDir + '/' + prefix + "_" + str(idx) + ".png"
-        save_image(fullOutPath, deprocess(im, dim_ordering='th'))
+        save_image(fullOutPath, im.transpose(1, 2, 0)[:, :, np.argsort([2, 1, 0])])
 
         # fullFalsePath = outputDir + '/' + prefix + "_false.png"
-        # save_image(fullFalsePath, deprocess(results_false[idx], dim_ordering='th'))
+        # save_image(fullFalsePath, results_false[idx].transpose(1, 2, 0)[:, :, np.argsort([2, 1, 0])])
+
+        current_iter += 1
+
+    for idx, im in enumerate(results_overfit):
+        prefix = str(current_iter).zfill(4)
+        fullOutPath = outputDir + '/' + prefix + "_overfit_" + str(idx) + ".png"
+        save_image(fullOutPath, im.transpose(1, 2, 0)[:, :, np.argsort([2, 1, 0])])
 
         current_iter += 1
