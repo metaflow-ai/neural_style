@@ -17,18 +17,18 @@ from utils.lossutils import (grams, frobenius_error,
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
 dataDir = dir + '/data'
-resultsDir = dir + '/outpout'
+resultsDir = dataDir + '/output'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
 trainDir = dataDir + '/train'
+overfitDir = dataDir + '/overfit'
 paintingsDir = dataDir + '/paintings'
 
 channels = 3
 width = 256
 height = 256
 input_shape = (channels, width, height)
-batch_size = 4
-max_number_of_epoch = 2
+batch_size = 8
 
 parser = argparse.ArgumentParser(
     description='Neural artistic style. Generates an image by combining '
@@ -97,7 +97,7 @@ reg_TV = total_variation_error(st_model.output, 2)
 
 print('Iterating over hyper parameters')
 current_iter = 0
-for alpha in [1e2]:
+for alpha in [1e1, 1e0, 1e-2]:
     for beta in [5.]:
         for gamma in [1e-03]:
             print("alpha, beta, gamma:", alpha, beta, gamma)
@@ -123,11 +123,12 @@ for alpha in [1e2]:
             print('Starting training')
             best_trainable_weights, losses = train_weights(
                 trainDir,
+                # overfitDir, 
                 (height, width),
                 st_model, 
                 train_iteratee, 
                 cv_input_dir=None, 
-                max_iter=4000,
+                max_iter=1000,
                 batch_size=batch_size
             )
 

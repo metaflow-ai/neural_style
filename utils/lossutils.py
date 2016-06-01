@@ -1,4 +1,4 @@
-import os, re, h5py
+import os, re, h5py, math
 import numpy as np 
 
 from keras import backend as K
@@ -152,19 +152,22 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
 
     need_more_training = True
     current_iter = 0
-    current_epoch = 0
+    current_epoch = 1
     files = [input_dir + '/' + name for name in os.listdir(input_dir) if len(re.findall('\.(jpe?g|png)$', name))]
-    
+    print('total_files %d' % len(files))
+
+    max_epoch = math.ceil((batch_size * max_iter) / len(files))
     while need_more_training:
-        print('Epoch %d, max_iter %d, total_files %d' % (current_epoch + 1, max_iter, len(files)))
-        progbar = Progbar(max_iter)
+        print('Epoch %d/%d' % (current_epoch, max_epoch))
+        nb_elem = min((max_iter - current_iter) * batch_size, len(files))
+        progbar = Progbar(nb_elem)
         progbar_values = []
 
         ims = []
         for idx, fullpath in enumerate(files):
             im = load_image(fullpath, size=size, dim_ordering='th')
             ims.append(im)
-            if len(ims) >= batch_size:
+            if len(ims) >= batch_size or idx == len(files) - 1:
                 current_iter += 1
                 data = train_iteratee([np.array(ims), True])
 
@@ -172,16 +175,10 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
                 losses['training_loss'].append(training_loss)
                 progbar_values.append(('training_loss', training_loss))
                 for loss_idx, loss in enumerate(data):
-                    if idx < 1:
+                    if loss_idx < 1:
                         continue
                     progbar_values.append(('loss ' + str(loss_idx), loss))
-                # if cv_input_dir != None:
-                #     data_loss = train_iteratee([cv_input_dir, False])
-                #     cv_loss = data_loss[0].item(0)
-                #     losses['cv_loss'].append(cv_loss)
-                #     progbar_values.append(('cv_loss', cv_loss))
-
-                progbar.update(current_iter, progbar_values)
+                progbar.update(idx + 1, progbar_values)
 
                 if training_loss < losses['best_loss']:
                     losses['best_loss'] = training_loss
@@ -194,6 +191,7 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
                             losses: losses,
                             model: model
                         })
+
                 ims = []
                 if current_iter >= max_iter:
                     need_more_training = False
