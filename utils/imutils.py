@@ -37,9 +37,9 @@ def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=F
         
         fullpath = absPath + '/' + filename
         if st:
-            im = load_image(fullpath, size, dim_ordering, verbose)
+            im = load_image_st(fullpath, size, dim_ordering, verbose)
         else:
-            im = load_image_st(fullpath, size, verbose)
+            im = load_image(fullpath, size, verbose)
         ims.append(im)
 
     return np.array(ims)
