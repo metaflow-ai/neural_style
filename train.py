@@ -123,7 +123,7 @@ for alpha in [1e2, 1e1]:
             train_iteratee = K.function(inputs, outputs, updates=updates)
 
             print('Starting training')
-            best_trainable_weights, losses = train_weights(
+            weights, losses = train_weights(
                 trainDir,
                 # overfitDir, 
                 (height, width),
@@ -134,15 +134,20 @@ for alpha in [1e2, 1e1]:
                 batch_size=batch_size
             )
 
+            best_trainable_weights = weights[0]
+            last_trainable_weights = weights[1]
             prefix = str(current_iter).zfill(4)
             suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
-            st_weights = resultsDir + '/' + prefix + 'st_vangogh_weights' + suffix + '.hdf5'
+            best_st_weights = resultsDir + '/' + prefix + 'best_st_vangogh_weights' + suffix + '.hdf5'
+            last_st_weights = resultsDir + '/' + prefix + 'last_st_vangogh_weights' + suffix + '.hdf5'
             fullpath_loss = resultsDir + '/' + prefix + 'st_vangogh_loss' + suffix + '.json'
             current_iter += 1
 
             print("Saving final data")
             st_model.set_weights(best_trainable_weights)
-            st_model.save_weights(st_weights, overwrite=True)
+            st_model.save_weights(best_st_weights, overwrite=True)
+            st_model.set_weights(last_trainable_weights)
+            st_model.save_weights(last_st_weights, overwrite=True)
 
             with open(fullpath_loss, 'w') as outfile:
                 json.dump(losses, outfile)  

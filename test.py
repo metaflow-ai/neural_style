@@ -13,7 +13,6 @@ if not os.path.isdir(weightsDir):
 outputDir = dataDir + '/output'
 if not os.path.isdir(outputDir): 
     os.makedirs(outputDir)
-
 overfitDir = dataDir + '/overfit'    
 testDir = dataDir + '/test'
 
@@ -45,7 +44,6 @@ for weights_filename in weights_filenames:
     for idx, im in enumerate(results):
         prefix = str(current_iter).zfill(4)
         fullOutPath = outputDir + '/' + prefix + "_" + str(idx) + ".png"
-        print(im[0, 10:20, 10:20])
         save_image_st(fullOutPath, im)
 
         # fullFalsePath = outputDir + '/' + prefix + "_false.png"

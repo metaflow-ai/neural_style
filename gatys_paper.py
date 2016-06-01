@@ -80,9 +80,9 @@ for idx, feat_output in enumerate(feat_outputs_layer):
     layer_name_feat = feat_layers_used[idx]
     train_loss_feat = frobenius_error(train_feat_labels[idx], feat_output)
     print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
-    for alpha in [1e2]:
-        for beta in [5e0]:
-            for gamma in [1e-3]:
+    for alpha in [20e0]:
+        for beta in [1e0]:
+            for gamma in [1e-4]:
                 print("alpha, beta, gamma:", alpha, beta, gamma)
 
                 print('Computing train loss')

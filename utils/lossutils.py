@@ -186,13 +186,12 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
                     losses['best_loss'] = training_loss
                     best_trainable_weights = model.get_weights()
 
-                for tuple in callbacks:
-                    if current_iter % tuple[0] == 0:
-                        tuple[1]({
-                            current_iter:current_iter,
-                            losses: losses,
-                            model: model
-                        })
+                for callback in callbacks:
+                    callback({
+                        current_iter:current_iter,
+                        losses: losses,
+                        model: model
+                    })
 
                 ims = []
                 if current_iter >= max_iter:
@@ -201,5 +200,6 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
 
         current_epoch += 1
 
+    last_trainable_weights = model.get_weights()
     print("final best loss:", losses['best_loss'])
-    return best_trainable_weights, losses
+    return (best_trainable_weights, last_trainable_weights), losses 
