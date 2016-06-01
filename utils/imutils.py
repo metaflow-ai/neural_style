@@ -64,10 +64,10 @@ def load_image_st(fullpath, size=(600, 600), verbose=False):
     if size != None:
         im = misc.imresize(im, size, interp='bilinear')
     perm = np.argsort([2, 1, 0])
-    im = im[:, :, perm] # th ordering, RGB
+    im = im[:, :, perm] # th ordering, BGR
     im = im.transpose(2, 0, 1) # th ordering, BGR
 
-    return im.copy()
+    return im.copy().astype(K.floatx())
 
 
 # im should be in RGB order
@@ -121,8 +121,21 @@ def deprocess(im, dim_ordering='tf'):
     im = im.clip(0, 255)
     im = im.astype('uint8')
 
-
     return im
+
+def save_image(fullOutPath, im):
+    imsave(fullOutPath, im)
+
+def save_image_st(fullOutPath, im):
+    im = im.transpose((1, 2, 0))
+    
+    perm = np.argsort([2, 1, 0])
+    im = im[:, :, perm]
+
+    im = im.clip(0, 255)
+    im = im.astype('uint8')
+
+    imsave(fullOutPath, im)
 
 @memoize
 def load_mean(name='vgg19', dim_ordering='tf'):
@@ -130,9 +143,6 @@ def load_mean(name='vgg19', dim_ordering='tf'):
         return VGG_19_mean(dim_ordering) # BGR ordering
     else:
         raise Exception('Invalid mean name:' + name)
-
-def save_image(fullOutPath, im):
-    imsave(fullOutPath, im)
 
 def create_noise_tensor(height, width, channels, dim_ordering='tf'):
     if dim_ordering == 'tf':

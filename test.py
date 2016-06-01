@@ -1,10 +1,9 @@
 import os, re
-import numpy as np
 
 from keras import backend as K
 
 from models.style_transfer import (style_transfer_conv_transpose)
-from utils.imutils import load_images, deprocess, save_image
+from utils.imutils import load_images, save_image_st
 
 dir = os.path.dirname(os.path.realpath(__file__))
 dataDir = dir + '/data'
@@ -46,16 +45,17 @@ for weights_filename in weights_filenames:
     for idx, im in enumerate(results):
         prefix = str(current_iter).zfill(4)
         fullOutPath = outputDir + '/' + prefix + "_" + str(idx) + ".png"
-        save_image(fullOutPath, im.transpose(1, 2, 0)[:, :, np.argsort([2, 1, 0])])
+        print(im[0, 10:20, 10:20])
+        save_image_st(fullOutPath, im)
 
         # fullFalsePath = outputDir + '/' + prefix + "_false.png"
-        # save_image(fullFalsePath, results_false[idx].transpose(1, 2, 0)[:, :, np.argsort([2, 1, 0])])
+        # save_image_st(fullFalsePath, results_false[idx])
 
         current_iter += 1
 
     for idx, im in enumerate(results_overfit):
         prefix = str(current_iter).zfill(4)
         fullOutPath = outputDir + '/' + prefix + "_overfit_" + str(idx) + ".png"
-        save_image(fullOutPath, im.transpose(1, 2, 0)[:, :, np.argsort([2, 1, 0])])
+        save_image_st(fullOutPath, im)
 
         current_iter += 1

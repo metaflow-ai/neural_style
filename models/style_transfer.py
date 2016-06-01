@@ -91,7 +91,7 @@ def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 600, 600)):
 
     c91 = ConvolutionTranspose2D(3, 9, 9, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a81)
-    c92 = Activation(lambda x: 255 * K.tanh(x), name="output")(c91)    
+    c92 = Activation(lambda x: 255 * K.sigmoid(x / 255), name="output")(c91)    
 
     
     model = Model(input=[input], output=[c92])
