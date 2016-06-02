@@ -12,10 +12,11 @@ from utils.lossutils import (frobenius_error, train_weights)
 
 dir = os.path.dirname(os.path.realpath(__file__))
 dataDir = dir + '/data'
-resultsDir = dir + '/models'
+resultsDir = dir + '/models/weights'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
 trainDir = dataDir + '/train'
+overfitDir = dataDir + '/overfit'
 
 channels = 3
 width = 256
@@ -46,7 +47,8 @@ for alpha in [20e0]:
 
             print('Starting training')
             weights, losses = train_weights(
-                trainDir,
+                # trainDir,
+                overfitDir,
                 (height, width),
                 st_model, 
                 train_iteratee, 
