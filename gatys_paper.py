@@ -11,7 +11,7 @@ from utils.lossutils import (frobenius_error, total_variation_error,
                             grams, norm_l2, train_input
                             )
 
-optimizer = 'lbfgs'
+optimizer = 'adam'
 if optimizer == 'lbfgs':
     K.set_floatx('float64') # scipy needs float64 to use lbfgs
 
@@ -26,8 +26,8 @@ if not os.path.isdir(resultsDir):
 paintingsDir = dataDir + '/paintings'
 
 channels = 3
-width = 600
-height = 600
+width = 256
+height = 256
 input_shape = (channels, width, height)
 batch = 4
 
@@ -41,13 +41,13 @@ print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
-model = VGG_19_headless_5(modelWeights, trainable=False)
+model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type='max')
 layer_dict, layers_names = get_layer_data(model, 'conv_')
 print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
 style_layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_3']
-feat_layers_used = ['conv_3_4', 'conv_4_2', 'conv_4_4']
+feat_layers_used = ['conv_4_2']
 # before conv_3_2 layers are too "clean" for human perception
 # from conv_5_1 layers doesn't hold enough information to rebuild the structure of the photo
 style_outputs_layer = [layer_dict[name].output for name in style_layers_used]
@@ -73,6 +73,8 @@ reg_TV = total_variation_error(input_layer, 2)
 
 print('Building white noise images')
 input_data = create_noise_tensor(height, width, channels, 'th')
+# input_data = X_train.copy()
+# input_data = X_train_style.copy()
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1

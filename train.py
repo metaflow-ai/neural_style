@@ -27,7 +27,7 @@ channels = 3
 width = 512
 height = 512
 input_shape = (channels, width, height)
-batch_size = 8
+batch_size = 2
 
 parser = argparse.ArgumentParser(
     description='Neural artistic style. Generates an image by combining '
@@ -53,7 +53,7 @@ init_weights = st_model.get_weights()
 
 print('Loading VGG headless 5')
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
-vgg_model = VGG_19_headless_5(modelWeights, trainable=False)
+vgg_model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type='max')
 layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
 print('Layers found:' + ', '.join(layers_names))
 
@@ -99,9 +99,9 @@ reg_TV = total_variation_error(preprocessed_output, 2)
 
 print('Iterating over hyper parameters')
 current_iter = 0
-for alpha in [1e2, 1e1]:
-    for beta in [5.]:
-        for gamma in [1e-03, 1e-05]:
+for alpha in [20e0]:
+    for beta in [1.]:
+        for gamma in [1e-04]:
             print("alpha, beta, gamma:", alpha, beta, gamma)
 
             gc.collect()
@@ -114,7 +114,7 @@ for alpha in [1e2, 1e1]:
             train_loss =  sum(tls + tlf) + rtv
 
             print('Compiling Adam update')
-            adam = Adam(lr=1e-03)
+            adam = Adam(lr=1e-02)
             updates = adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
 
             print('Compiling train function')
@@ -130,7 +130,7 @@ for alpha in [1e2, 1e1]:
                 st_model, 
                 train_iteratee, 
                 cv_input_dir=None, 
-                max_iter=1000,
+                max_iter=4000,
                 batch_size=batch_size
             )
 

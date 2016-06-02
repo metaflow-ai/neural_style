@@ -17,8 +17,8 @@ overfitDir = dataDir + '/overfit'
 testDir = dataDir + '/test'
 
 channels = 3
-width = 256
-height = 256
+width = 600
+height = 600
 input_shape = (channels, width, height)
 
 X_overfit = load_images(overfitDir, size=(height, width), dim_ordering='th', verbose=True, st=True)
@@ -36,7 +36,7 @@ for weights_filename in weights_filenames:
     predict = K.function([st_model.input, K.learning_phase()], st_model.output)
 
     print('Predicting')
-    # results_false = st_model.predict(X_test) # Equivalent to predict([X_test, False])
+    results_false = st_model.predict(X_test) # Equivalent to predict([X_test, False])
     results = predict([X_test, True])
     results_overfit = predict([X_overfit, True])
 
@@ -45,9 +45,10 @@ for weights_filename in weights_filenames:
         prefix = str(current_iter).zfill(4)
         fullOutPath = outputDir + '/' + prefix + "_" + str(idx) + ".png"
         save_image_st(fullOutPath, im)
-
-        # fullFalsePath = outputDir + '/' + prefix + "_false.png"
-        # save_image_st(fullFalsePath, results_false[idx])
+        fullOriPath = outputDir + '/' + prefix + "_" + str(idx) + "_ori.png"
+        save_image_st(fullOriPath, X_test[idx])
+        fullFalsePath = outputDir + '/' + prefix + "_overfit_" + str(idx) + "_false.png"
+        save_image_st(fullFalsePath, results_false[idx])
 
         current_iter += 1
 
@@ -55,5 +56,9 @@ for weights_filename in weights_filenames:
         prefix = str(current_iter).zfill(4)
         fullOutPath = outputDir + '/' + prefix + "_overfit_" + str(idx) + ".png"
         save_image_st(fullOutPath, im)
+        fullOriPath = outputDir + '/' + prefix + "_overfit_" + str(idx) + "_ori.png"
+        save_image_st(fullOriPath, X_overfit[idx])
+        fullFalsePath = outputDir + '/' + prefix + "_overfit_" + str(idx) + "_false.png"
+        save_image_st(fullFalsePath, results_false[idx])
 
         current_iter += 1
