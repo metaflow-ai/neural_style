@@ -1,6 +1,5 @@
 require 'torch'
 require 'nn'
-require 'image'
 
 require 'hdf5'
 require 'json'
@@ -10,105 +9,103 @@ require 'json'
 local cmd = torch.CmdLine()
 
 -- Basic options
-cmd:option('-content_image', '../data/test/COCO_test2014_000000000001.jpg',
-           'Content target image')
-cmd:option('-gpu', -1, 'Zero-indexed ID of the GPU to use; for CPU mode set -gpu = -1')
-cmd:option('-output_image', 'out.png')
-
-cmd:option('-archi', '../tests/fixture/model/archi.json')
-cmd:option('-weights', '../tests/fixture/model/last_weights.hdf5')
-cmd:option('-backend', 'nn', 'nn|clnn')
+cmd:option('-output_name', 'my_model.dat')
+cmd:option('-archi', '../tests/fixture/model_import/archi.json')
+cmd:option('-weights', '../tests/fixture/model_import/last_weights.hdf5')
 
 local function main(params)
+  -- Import Keras strucutre
+  local net = loadModel(params.archi, params.weights)
 
-  -- Backend conf
-  if params.gpu >= 0 then
-    if params.backend ~= 'clnn' then
-      require 'cutorch'
-      require 'cunn'
-      cutorch.setDevice(params.gpu + 1)
-    else
-      require 'clnn'
-      require 'cltorch'
-      cltorch.setDevice(params.gpu + 1)
+  -- Save model
+  print('Saving model:')
+  print(net)
+  torch.save('models/' .. params.output_name, net)
+end
+  
+function loadModel(jsonfile, weightsFile)
+  local archi = json.load(jsonfile)
+  local weightsFile = hdf5.open(weightsFile, 'r')
+  local weights = weightsFile:read():all()
+
+  local net = nn.Sequential()
+  for key, layer in pairs(archi.config.layers) do
+    if key == 1 and not layer.class_name == 'InputLayer' then
+      error(string.format('First layer of a model should be an input layer, found "%s"', layer.class_name))
+    elseif key == 1 then
+      batchShapeInput = {
+        layer.config.batch_input_shape[1],
+        layer.config.batch_input_shape[2],
+        layer.config.batch_input_shape[3]
+      }
+      nInputPlane = batchShapeInput[1]
     end
-  else
-    params.backend = 'nn'
+
+    if layer.class_name == 'Convolution2D' then
+      local net_layer = buildConvolution2D(nInputPlane, layer)
+      local weight = weights[layer.name][layer.name .. "_W"]:double()
+      local bias = weights[layer.name][layer.name .. "_b"]:double()
+      net_layer.weight = weight
+      net_layer.bias = bias
+      net:add(net_layer)
+
+      nInputPlane = layer.config.nb_filter
+    elseif layer.class_name == 'BatchNormalization' then
+      net:add(buildBatchNormalization(nInputPlane, layer))
+
+    elseif layer.class_name == 'ConvolutionTranspose2D' then
+      local net_layer = buildConvolutionTranspose2D(nInputPlane, layer)
+      local weight = weights[layer.name][layer.name .. "_W"]:double()
+      local bias = weights[layer.name][layer.name .. "_b"]:double()
+      net_layer.weight = weight
+      net_layer.bias = bias
+      net:add(net_layer)
+
+      nInputPlane = layer.config.nb_filter
+    end
+    if (not layer.config.activation == 'linear') or layer.class_name == 'Activation' then
+        net:add(buildActivation(layer))
+    end
   end
-  -- END Backend conf
 
-  -- Load ST
-  local archi = json.load(params.archi)
-  local weightsFile = hdf5.open(params.weights, 'r')
-  -- local data = weightsFile:read('/path/to/data'):all()
-
-  -- cnn = 
-
-  -- if params.gpu >= 0 then
-  --   if params.backend ~= 'clnn' then
-  --     cnn:cuda()
-  --   else
-  --     cnn:cl()
-  --   end
-  -- end
-  -- -- END Load ST
-  
-  
-  -- -- Loading content_image
-  -- local content_image = image.load(params.content_image, 3)
-  -- content_image = image.scgetale(content_image, 600, 'bilinear')
-  -- local content_image_processed = preprocess(content_image):float()
-  -- -- END Loading content_image
-  
-  -- -- Initialize the image
-  -- if params.gpu >= 0 then
-  --   if params.backend ~= 'clnn' then
-  --     content_image_processed = content_image_processed:cuda()
-  --   else
-  --     content_image_processed = content_image_processed:cl()
-  --   end
-  -- end
-  
-  -- -- Run it through the network once to get the proper size for the gradient
-  -- -- All the gradients will come from the extra loss modules, so we just pass
-  -- -- zeros into the top of the net on the backward pass.
-  -- local img = net:forward(content_image_processed)
-
-
-  -- local function save()
-  --   local disp = deprocess(img:double())
-  --   disp = image.minmax{tensor=disp, min=0, max=1}
-  --   local filename = build_filename(params.output_image, t)
-  --   image.save(filename, disp)
-  -- end
-
+  return net
 end
-  
 
-function build_filename(output_image, iteration)
-  local ext = paths.extname(output_image)
-  local basename = paths.basename(output_image, ext)
-  local directory = paths.dirname(output_image)
-  return string.format('%s/%s_%d.%s',directory, basename, iteration, ext)
+function buildConvolution2D(nInputPlane, layer)
+  nOutputPlane = layer.config.nb_filter
+  kW = layer.config.nb_col
+  kH = layer.config.nb_row
+  dW = layer.config.subsample[1]
+  dH = layer.config.subsample[2]
+  if layer.config.border_mode == "same" then
+    padW = (kW - 1) / 2
+  else
+    padW = 0
+  end
+  return nn.SpatialConvolution(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW)
+end
+
+function buildConvolutionTranspose2D(nInputPlane, layer)
+  nOutputPlane = layer.config.nb_filter
+  kW = layer.config.nb_col
+  kH = layer.config.nb_row
+  dW = layer.config.subsample[1]
+  dH = layer.config.subsample[2]
+  if layer.config.border_mode == "same" then
+    padW = (kW - 1) / 2
+  else
+    padW = 0
+  end
+  padH = padW
+  return nn.SpatialFullConvolution(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW, padH)
 end
 
 
--- Preprocess an image before passing it to a Caffe model.
--- We need to rescale from [0, 1] to [0, 255], convert from RGB to BGR,
-function preprocess(img)
-  local perm = torch.LongTensor{3, 2, 1}
-  img = img:index(1, perm):mul(256.0)
-  return img
+function buildActivation(layer)
+  if layer.config.activation == 'relu' then
+    return nn.ReLU()
+  end
 end
-
-
--- Undo the above preprocessing.
-function deprocess(img)
-  local perm = torch.LongTensor{3, 2, 1}
-  img = img:index(1, perm):div(256.0)
-  return img
-end
-
 
 local params = cmd:parse(arg)
 main(params)

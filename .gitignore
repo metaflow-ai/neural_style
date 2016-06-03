@@ -10,6 +10,9 @@ vgg19/vgg-19_*weights*
 models/data/**
 models/*.hdf5
 tmp/*
+torch/**/*.png
+torch/**/*.jpe?g
+torch/**/my_model*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
