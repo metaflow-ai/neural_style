@@ -7,7 +7,7 @@ data/**/*.jpg
 data/**/*.png
 data/**/*.hdf5
 vgg19/vgg-19_*weights*
-models/results/*
+models/data/**
 models/*.hdf5
 tmp/*
 

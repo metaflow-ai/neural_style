@@ -4,7 +4,7 @@ dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/..')
 
 from keras.utils.visualize_util import plot as plot_model
-from models.style_transfer import style_transfer
+from models.style_transfer import style_transfer_conv_transpose as st
  
 from utils.imutils import load_images
 
@@ -21,11 +21,11 @@ input_shape = (channels, width, height)
 batch = 4
 
 print('Loading test set')
-X_test = load_images(testDir, limit=4, size=(height, width))
+X_test = load_images(testDir, limit=4, size=(height, width), dim_ordering='th', st=True)
 print('X_test.shape: ' + str(X_test.shape))
 
 
-model = style_transfer(input_shape=input_shape)
+model = st(input_shape=input_shape)
 plot_model(model, to_file=dir + '/model.png', show_shapes=True)
 total_params = 0
 for i in range(len(model.layers)):
@@ -37,8 +37,16 @@ print('Predicting')
 start = time.clock()
 num_loop = 1
 for i in range(num_loop):
-    print('loop: ' + str(i))
     results = model.predict(X_test) # Equivalent to predict([X_test, False])
 end = time.clock()
+duration_batch = (end-start)/(X_test.shape[0] * num_loop)
+
+start = time.clock()
+num_loop = 1
+for i in range(X_test.shape[0]):
+    results = model.predict(X_test[i:i+1, :, :, :]) # Equivalent to predict([X_test, False])
+end = time.clock()
 duration = (end-start)/(X_test.shape[0] * num_loop)
-print("duration taken on 1 average call: " + str(duration))
+
+print("duration taken on 1 average call when batching: " + str(duration_batch))
+print("duration taken on 1 average call when looping: " + str(duration))

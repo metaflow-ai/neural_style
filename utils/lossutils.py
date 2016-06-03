@@ -148,7 +148,7 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
 def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max_iter=2000, batch_size=4, callbacks=[]):
     losses = {'training_loss': [], 'cv_loss': [], 'best_loss': 1e15}
     
-    best_trainable_weights = model.get_weights()
+    best_weights = model.get_weights()
 
     need_more_training = True
     current_iter = 0
@@ -184,7 +184,7 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
 
                 if training_loss < losses['best_loss']:
                     losses['best_loss'] = training_loss
-                    best_trainable_weights = model.get_weights()
+                    best_weights = model.get_weights()
 
                 for callback in callbacks:
                     callback({
@@ -200,6 +200,6 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
 
         current_epoch += 1
 
-    last_trainable_weights = model.get_weights()
+    last_weights = model.get_weights()
     print("final best loss:", losses['best_loss'])
-    return (best_trainable_weights, last_trainable_weights), losses 
+    return (best_weights, last_weights), losses 

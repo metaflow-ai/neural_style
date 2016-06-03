@@ -1,4 +1,4 @@
-import os, json, gc, argparse
+import os, json, gc, time, argparse
 import numpy as np
 
 from keras import backend as K
@@ -12,22 +12,17 @@ from models.style_transfer import (style_transfer_conv_transpose)
 from utils.imutils import plot_losses, load_image, load_mean
 from utils.lossutils import (grams, frobenius_error, 
                     train_weights, total_variation_error)
+from utils.general import export_model
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
 dataDir = dir + '/data'
-resultsDir = dataDir + '/output'
+resultsDir = dir + '/models/data/st'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
 trainDir = dataDir + '/train'
 overfitDir = dataDir + '/overfit'
 paintingsDir = dataDir + '/paintings'
-
-channels = 3
-width = 512
-height = 512
-input_shape = (channels, width, height)
-batch_size = 2
 
 parser = argparse.ArgumentParser(
     description='Neural artistic style. Generates an image by combining '
@@ -35,8 +30,18 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
-parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='Subsampling scheme.')
+parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='VGG pooling type.')
+parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
+parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
+parser.add_argument('--max_iter', default=4000, type=int, help='Number of training iter.')
+parser.add_argument('--nb_res_layer', default=6, type=int, help='Number of residual layers in the style transfer model.')
 args = parser.parse_args()
+
+channels = 3
+width = args.image_size
+height = args.image_size
+input_shape = (channels, width, height)
+batch_size = args.batch_size
 
 X_train_style = np.array([load_image(args.style, size=(height, width), dim_ordering='th', verbose=True)])
 print("X_train_style shape:", X_train_style.shape)
@@ -44,7 +49,7 @@ print("X_train_style shape:", X_train_style.shape)
 print('Loading style_transfer model')
 stWeightsFullpath = dir + '/models/st_vangogh_weights.hdf5'
 
-st_model = style_transfer_conv_transpose(input_shape=input_shape) # th ordering, BGR
+st_model = style_transfer_conv_transpose(input_shape=input_shape, nb_res_layer=args.nb_res_layer) # th ordering, BGR
 if os.path.isfile(stWeightsFullpath): 
     print("Loading weights")
     st_model.load_weights(stWeightsFullpath)
@@ -129,27 +134,16 @@ for alpha in [20e0]:
                 (height, width),
                 st_model, 
                 train_iteratee, 
-                cv_input_dir=None, 
-                max_iter=4000,
+                max_iter=args.max_iter,
                 batch_size=batch_size
             )
 
-            best_trainable_weights = weights[0]
-            last_trainable_weights = weights[1]
-            prefix = str(current_iter).zfill(4)
-            suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
-            best_st_weights = resultsDir + '/' + prefix + 'best_st_vangogh_weights' + suffix + '.hdf5'
-            last_st_weights = resultsDir + '/' + prefix + 'last_st_vangogh_weights' + suffix + '.hdf5'
-            fullpath_loss = resultsDir + '/' + prefix + 'st_vangogh_loss' + suffix + '.json'
-            current_iter += 1
+            best_weights = weights[0]
+            last_weights = weights[1]
 
             print("Saving final data")
-            st_model.set_weights(best_trainable_weights)
-            st_model.save_weights(best_st_weights, overwrite=True)
-            st_model.set_weights(last_trainable_weights)
-            st_model.save_weights(last_st_weights, overwrite=True)
-
-            with open(fullpath_loss, 'w') as outfile:
+            prefixedDir = resultsDir + '/' + str(int(time.time()))
+            export_model(st_model, prefixedDir, best_weights)
+            with open(prefixedDir + '/losses.json', 'w') as outfile:
                 json.dump(losses, outfile)  
-
-            plot_losses(losses, resultsDir, prefix, suffix)
+            plot_losses(losses, prefixedDir)

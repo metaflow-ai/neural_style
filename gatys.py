@@ -23,12 +23,6 @@ resultsDir = dataDir + '/output/vgg19'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
 
-channels = 3
-width = 256
-height = 256
-input_shape = (channels, width, height)
-batch = 4
-
 parser = argparse.ArgumentParser(
     description='Neural artistic style. Generates an image by combining '
                 'the content of an image and the style of another.',
@@ -36,8 +30,15 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('--content', default=dataDir + '/overfit/000.jpg', type=str, help='Content image.')
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
-parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='Subsampling scheme.')
+parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='VGG pooling type.')
+parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
+parser.add_argument('--max_iter', default=1000, type=int, help='Number of training iter.')
 args = parser.parse_args()
+
+channels = 3
+width = args.image_size
+height = args.image_size
+input_shape = (channels, width, height)
 
 X_train = np.array([load_image(args.content, size=(height, width), dim_ordering='th', verbose=True)])
 print("X_train shape:", X_train.shape)
@@ -91,7 +92,7 @@ for idx_feat, layer_name_feat in enumerate(layers_names):
                     iterate = K.function([input_layer], [loss, grads, lf, ls])
 
                     config = {'learning_rate': 5e-1}
-                    best_input_data, losses = train_input(input_data, iterate, optimizer, config, max_iter=1000)
+                    best_input_data, losses = train_input(input_data, iterate, optimizer, config, max_iter=args.max_iter)
 
                     prefix = str(current_iter).zfill(4)
                     suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
