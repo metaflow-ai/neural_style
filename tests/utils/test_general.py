@@ -17,6 +17,7 @@ from utils.imutils import load_image_st
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
+from theano import tensor as T
 
 class TestImUtils(unittest.TestCase):
 
@@ -35,11 +36,11 @@ class TestImUtils(unittest.TestCase):
         os.rmdir(data_model_folder)
 
     def test_import_model(self):
-        data_model_folder = dir + "/../fixture/model_import"
+        data_model_folder = dir + "/../fixture/model_conv2d_relu"
         model = import_model(data_model_folder)
 
         input_img = np.array([load_image_st(dir + '/../fixture/blue.png', size=None, verbose=False)])
-        output = model.predict([input_img]).astype('int8')
+        output = model.predict([input_img]).astype('int32')
         true_output = np.array([
             [
                 [
@@ -48,9 +49,9 @@ class TestImUtils(unittest.TestCase):
                     [0, 0, 0]
                 ],
                 [
-                    [  62,   -2,  103],
-                    [ 108,   25, -103],
-                    [-103,  116, -125]
+                    [318, 254, 103],
+                    [364, 281, 153],
+                    [153, 116, 131]
                 ],
                 [
                     [0, 0, 0],
