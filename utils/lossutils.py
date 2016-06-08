@@ -82,7 +82,7 @@ def total_variation_error(y, beta=1):
 ##########
 # Training
 ##########
-def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2000):
+def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2000, callbacks=[]):
     losses = {'training_loss': [], 'cv_loss': [], 'best_loss': 1e15}
 
     wait = 0
@@ -112,6 +112,13 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
                     break
                 wait +=1
 
+            for callback in callbacks:
+                callback({
+                    'current_iter':i,
+                    'losses': losses,
+                    'input_data':input_data
+                })
+
             input_data, config = adam(input_data, grads_val, config)
     else:
         global gogh_inc_val
@@ -137,9 +144,16 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
             if training_loss < losses['best_loss']:
                 losses['best_loss'] = training_loss
 
+            for callback in callbacks:
+                callback({
+                    'current_iter':gogh_inc_val,
+                    'losses': losses,
+                    'input_data':input_data
+                })
+
             return training_loss, grads_val.reshape(-1)
 
-        best_input_data, f ,d = fmin_l_bfgs_b(iter, input_data, maxiter=max_iter)
+        best_input_data, f ,d = fmin_l_bfgs_b(iter, input_data, factr=1e7, maxiter=max_iter) #factr: 1e7 default value
         best_input_data = np.reshape(best_input_data, input_data.shape)
 
     print("final loss:", losses['best_loss'])
@@ -190,7 +204,8 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
                     callback({
                         current_iter:current_iter,
                         losses: losses,
-                        model: model
+                        model: model,
+                        data:data
                     })
 
                 ims = []

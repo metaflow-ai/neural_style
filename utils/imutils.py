@@ -61,20 +61,26 @@ def load_image_st(fullpath, size=(600, 600), verbose=False):
         print('Loading ' + fullpath)
 
     im = misc.imread(fullpath, mode='RGB') # tf ordering, RGB
-    if size != None:
-        im = misc.imresize(im, size, interp='bilinear')
+    im = resize(im, size)
     perm = np.argsort([2, 1, 0])
     im = im[:, :, perm] # th ordering, BGR
     im = im.transpose(2, 0, 1) # th ordering, BGR
 
     return im.copy().astype(K.floatx())
 
+def resize(im, size):
+    if size == None:
+        return im
+    elif type(size) == tuple:
+        return misc.imresize(im, size, interp='bilinear')
+    else:
+        size = float(size) / im.shape[0] # make a float
+        return misc.imresize(im, size, interp='bilinear')
 
 # im should be in RGB order
 # dim_ordering: How "im" is ordered
 def preprocess(im, size=None, dim_ordering='tf'):
-    if size != None:
-        im = misc.imresize(im, size, interp='bilinear')
+    im = resize(im, size)
     im = im.copy().astype(K.floatx())
 
     nb_dims = len(im.shape)

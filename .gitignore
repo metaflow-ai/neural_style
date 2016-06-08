@@ -6,6 +6,7 @@ data/**/*.jpeg
 data/**/*.jpg
 data/**/*.png
 data/**/*.hdf5
+data/output/*
 vgg19/vgg-19_*weights*
 models/data/**
 models/*.hdf5
