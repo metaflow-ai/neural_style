@@ -52,7 +52,7 @@ print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
 
-layer_name = layers_names[1]
+layer_name = layers_names[3]
 print('Creating labels for ' + layer_name)
 out = layer_dict[layer_name].output
 predict = K.function([input_layer], [out])
@@ -63,8 +63,11 @@ input_data = create_noise_tensor(height, width, channels, 'th')
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1
-for gamma in [1e-8, 5e-8, 1e-7, 5e-7, 1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 5e-4]:
-    print('gamma: %f' % gamma)
+for gamma in [1e-7, 3e-7, 6e-7, 
+            1e-6, 3e-6, 6e-6, 
+            1e-5, 3e-5, 6e-5,
+            1e-4, 3e-4, 6e-4]:
+    print('gamma: %.7f' % gamma)
     prefix = str(current_iter).zfill(4)
 
     print('Compiling gamma')

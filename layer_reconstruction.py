@@ -30,7 +30,7 @@ parser.add_argument('--content', default=dataDir + '/overfit/000.jpg', type=str,
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
 parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
-parser.add_argument('--max_iter', default=600, type=int, help='Number of training iter.')
+parser.add_argument('--max_iter', default=800, type=int, help='Number of training iter.')
 args = parser.parse_args()
 
 channels = 3

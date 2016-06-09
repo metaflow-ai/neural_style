@@ -17,7 +17,7 @@ if optimizer == 'lbfgs':
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
 dataDir = dir + '/data'
-resultsDir = dataDir + '/output/vgg19/influence'
+resultsDir = dataDir + '/output/vgg19/alpha'
 if not os.path.isdir(resultsDir): 
     os.makedirs(resultsDir)
 
@@ -47,7 +47,7 @@ print("X_train_style shape:", X_train_style.shape)
 print('Loading VGG headless 5')
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
 model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type=args.pooling_type)
-layer_dict, layers_names = get_layer_data(model, 'conv_(1|2|3|4)') # remove conv_5_* layers
+layer_dict, layers_names = get_layer_data(model, 'conv_')
 print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
@@ -59,46 +59,47 @@ input_data = create_noise_tensor(height, width, channels, 'th')
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1
-alpha = 1e2 #3e2
-for idx_content, lc_name in enumerate(layers_names):
-    for idx_style, ls_name in enumerate(layers_names):
-        print('Creating labels for content ' + lc_name + ' and style ' + ls_name)
-        out_style = layer_dict[ls_name].output
-        predict_style = K.function([input_layer], [out_style])
-        y_style = predict_style([X_train_style])[0]
+ls_name = lc_name = layers_names[3]
+lc_name = layers_names[3]
 
-        out_content = layer_dict[lc_name].output
-        predict_content = K.function([input_layer], [out_content])
-        y_content = predict_content([X_train])[0]
+for alpha in [1e0, 3e0, 6e0, 1e1, 3e1, 6e1, 1e2, 3e2, 6e2, 1e3, 3e3, 6e3]:
+    print('Creating labels for content ' + lc_name + ' and style ' + ls_name)
+    out_style = layer_dict[ls_name].output
+    predict_style = K.function([input_layer], [out_style])
+    y_style = predict_style([X_train_style])[0]
 
-        loss_style = frobenius_error(grams(y_style), grams(out_style))
-        loss_content = frobenius_error(y_content, out_content)
+    out_content = layer_dict[lc_name].output
+    predict_content = K.function([input_layer], [out_content])
+    y_content = predict_content([X_train])[0]
 
-        print("weight_lc: %f, weight_ls: %f" % (layer_weights[lc_name]['content'], layer_weights[ls_name]['style']))
+    loss_style = frobenius_error(grams(y_style), grams(out_style))
+    loss_content = frobenius_error(y_content, out_content)
 
-        print('Compiling VGG headless 5 for content ' + lc_name + ' and style ' + ls_name)
-        ls = alpha * loss_style / layer_weights[ls_name]['style']
-        lc = loss_content / layer_weights[lc_name]['content']
-        loss =  ls + lc
-        grads = K.gradients(loss, input_layer)
-        if optimizer == 'adam':
-            grads = norm_l2(grads)
-        iterate = K.function([input_layer], [loss, grads, lc, ls])
+    print("alpha: %f, weight_lc: %f, weight_ls: %f" % (alpha, layer_weights[lc_name]['content'], layer_weights[ls_name]['style']))
 
-        print('Training the image')
-        config = {'learning_rate': 5e-1}
-        best_input_data, losses = train_input(
-            input_data, 
-            iterate, 
-            optimizer, 
-            config, 
-            max_iter=args.max_iter
-        )
-        prefix = str(current_iter).zfill(4)
-        suffix = "_weight_lc%f_weight_ls%f" % (layer_weights[lc_name]['content'], layer_weights[ls_name]['style'])
-        fullOutPath = resultsDir + '/' + prefix + '_style' + ls_name + '_content' + lc_name + suffix + ".png"
-        # dump_as_hdf5(resultsDir + '/' + prefix + '_style' + ls_name + '_content' + lc_name + suffix + ".hdf5", best_input_data[0])
-        save_image(fullOutPath, deprocess(best_input_data[0], dim_ordering='th'))
-        plot_losses(losses, resultsDir, prefix, suffix)
+    print('Compiling VGG headless 5 for content ' + lc_name + ' and style ' + ls_name)
+    ls = alpha * loss_style / layer_weights[ls_name]['style']
+    lc = loss_content / layer_weights[lc_name]['content']
+    loss =  ls + lc
+    grads = K.gradients(loss, input_layer)
+    if optimizer == 'adam':
+        grads = norm_l2(grads)
+    iterate = K.function([input_layer], [loss, grads, lc, ls])
 
-        current_iter += 1
+    print('Training the image')
+    config = {'learning_rate': 5e-1}
+    best_input_data, losses = train_input(
+        input_data, 
+        iterate, 
+        optimizer, 
+        config, 
+        max_iter=args.max_iter
+    )
+    prefix = str(current_iter).zfill(4)
+    suffix = "_alpha%f__weightlc%f_weightls%f" % (alpha, layer_weights[lc_name]['content'], layer_weights[ls_name]['style'])
+    fullOutPath = resultsDir + '/' + prefix + '_style' + ls_name + '_content' + lc_name + suffix + ".png"
+    # dump_as_hdf5(resultsDir + '/' + prefix + '_style' + ls_name + '_content' + lc_name + suffix + ".hdf5", best_input_data[0])
+    save_image(fullOutPath, deprocess(best_input_data[0], dim_ordering='th'))
+    plot_losses(losses, resultsDir, prefix, suffix)
+
+    current_iter += 1
