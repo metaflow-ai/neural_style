@@ -59,7 +59,7 @@ input_data = create_noise_tensor(height, width, channels, 'th')
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1
-alpha = 1e2 #3e2
+alpha = 5e1 # 1e2
 for idx_content, lc_name in enumerate(layers_names):
     for idx_style, ls_name in enumerate(layers_names):
         print('Creating labels for content ' + lc_name + ' and style ' + ls_name)
