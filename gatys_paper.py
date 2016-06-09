@@ -1,116 +1,140 @@
-import os
+import os, argparse, json
+import numpy as np
 
 from keras import backend as K
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
-from utils.imutils import (load_images, create_noise_tensor, 
+from utils.imutils import (load_image, create_noise_tensor, 
                     dump_as_hdf5, deprocess, save_image,
                     plot_losses)
 from utils.lossutils import (frobenius_error, total_variation_error, 
                             grams, norm_l2, train_input
                             )
 
+dir = os.path.dirname(os.path.realpath(__file__))
+vgg19Dir = dir + '/vgg19'
+dataDir = dir + '/data'
+paintingsDir = dataDir + '/paintings'
+
+parser = argparse.ArgumentParser(
+    description='Neural artistic style. Generates an image by combining '
+                'the content of an image and the style of another.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument('--content', default=dataDir + '/overfit/000.jpg', type=str, help='Content image.')
+parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
+parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='VGG pooling type.')
+parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
+parser.add_argument('--max_iter', default=1500, type=int, help='Number of training iter.')
+parser.add_argument('--input_type', default='random', type=str, choices=['random', 'content'], help='How to initialize the input data')
+args = parser.parse_args()
+
+resultsDir = dataDir + '/output/vgg19/gatys_%s_%s' % (args.pooling_type, args.input_type)
+if not os.path.isdir(resultsDir): 
+    os.makedirs(resultsDir)
+
 optimizer = 'adam'
 if optimizer == 'lbfgs':
     K.set_floatx('float64') # scipy needs float64 to use lbfgs
 
-
-dir = os.path.dirname(os.path.realpath(__file__))
-vgg19Dir = dir + '/vgg19'
-dataDir = dir + '/data'
-resultsDir = dataDir + '/output/vgg19'
-if not os.path.isdir(resultsDir): 
-    os.makedirs(resultsDir)
-
-paintingsDir = dataDir + '/paintings'
-
 channels = 3
-width = 256
-height = 256
+width = args.image_size
+height = args.image_size
 input_shape = (channels, width, height)
-batch = 4
 
-print('Loading train images')
-X_train = load_images(dataDir + '/overfit', size=(height, width), limit=1, dim_ordering='th', verbose=True)
+X_train = np.array([load_image(args.content, size=(height, width), dim_ordering='th', verbose=True)])
 print("X_train shape:", X_train.shape)
 
-print('Loading painting')
-X_train_style = load_images(dataDir + '/paintings', size=(height, width), limit=1, dim_ordering='th', verbose=True)
+X_train_style = np.array([load_image(args.style, size=height, dim_ordering='th', verbose=True)])
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
-model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type='max')
+model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type=args.pooling_type)
 layer_dict, layers_names = get_layer_data(model, 'conv_')
 print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
-style_layers_used = ['conv_1_2', 'conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_3']
-feat_layers_used = ['conv_4_2']
-# before conv_3_2 layers are too "clean" for human perception
-# from conv_5_1 layers doesn't hold enough information to rebuild the structure of the photo
-style_outputs_layer = [layer_dict[name].output for name in style_layers_used]
-feat_outputs_layer = [layer_dict[name].output for name in feat_layers_used]
+
+layer_weights = json.load(open(dataDir + '/output/vgg19/reconstruction/layer_weights.json', 'r'))
+
+# Layer chosen thanks to the pre_analysis script
+# conv_1_* layers have a weird border effect
+# conv_5_* layers doesn't hold enough information to rebuild the structure of the content/style
+style_layers = ['conv_2_1', 'conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_3']
+content_layers = ['conv_2_2', 'conv_3_2', 'conv_4_2']
+style_output_layers = [layer_dict[ls_name].output for ls_name in style_layers]
+content_output_layers = [layer_dict[lc_name].output for lc_name in content_layers]
 
 print('Creating training labels')
-predict_style = K.function([input_layer], style_outputs_layer)
-train_style_labels = predict_style([X_train_style])
-predict_feat = K.function([input_layer], feat_outputs_layer)
-train_feat_labels = predict_feat([X_train])
+predict_style = K.function([input_layer], style_output_layers)
+y_styles = predict_style([X_train_style])
+predict_content = K.function([input_layer], content_output_layers)
+y_contents = predict_content([X_train])
 
 print('Preparing training loss functions')
 train_loss_styles = []
-for idx, train_style_label in enumerate(train_style_labels):
+for idx, y_style in enumerate(y_styles):
     train_loss_styles.append(
         frobenius_error(
-            grams(train_style_label), 
-            grams(style_outputs_layer[idx])
+            grams(y_style), 
+            grams(style_output_layers[idx])
         )
     )
 
 reg_TV = total_variation_error(input_layer, 2)
 
-print('Building white noise images')
-input_data = create_noise_tensor(height, width, channels, 'th')
-# input_data = X_train.copy()
+print('Initializing input %s data' % args.input_type)
+if args.input_type == 'random':
+    input_data = create_noise_tensor(height, width, channels, 'th')
+elif args.input_type == 'content':
+    input_data = X_train.copy()
+else:
+    raise Exception('Input type choices are random|content')
 # input_data = X_train_style.copy()
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1
-for idx, feat_output in enumerate(feat_outputs_layer):
-    layer_name_feat = feat_layers_used[idx]
-    train_loss_feat = frobenius_error(train_feat_labels[idx], feat_output)
-    print('Compiling VGG headless 5 for ' + layer_name_feat + ' feat reconstruction')
-    for alpha in [20e0]:
+for idx, content_output in enumerate(content_output_layers):
+    lc_name = content_layers[idx]
+    content = frobenius_error(y_contents[idx], content_output)
+    print('Compiling VGG headless 5 for ' + lc_name + ' content reconstruction')
+    # Those hyper parameters are selected thx to pre_analysis scripts
+    for alpha in [3e1, 6e1, 1e2]:
         for beta in [1e0]:
-            for gamma in [1e-4]:
+            for gamma in [6e-6, 1e-5, 6e-5]:
                 print("alpha, beta, gamma:", alpha, beta, gamma)
 
                 print('Computing train loss')
-                tls = [train_loss_style * alpha * 1 / len(train_loss_styles) for train_loss_style in train_loss_styles]
-                tlf = [train_loss_feat * beta]
-                rtv = reg_TV * gamma
-                train_loss =  sum(tls + tlf) + rtv
+                tls = [alpha * train_loss_style / layer_weights[style_layers[idx]]['style'] for idx, train_loss_style in enumerate(train_loss_styles)]
+                tlc = beta * content / layer_weights[lc_name]['content'] * len(tls)
+                rtv = gamma * reg_TV
+                train_loss =  sum(tls) + tlc + rtv
 
                 print('Computing gradients')
                 grads = K.gradients(train_loss, input_layer)
                 if optimizer == 'adam':
                     grads = norm_l2(grads)
                 inputs = [input_layer]
-                outputs = [train_loss, grads] + tlf + tls
+                outputs = [train_loss, grads, tlc] + tls
 
                 print('Computing iteratee function')
                 train_iteratee = K.function(inputs, outputs)
 
                 config = {'learning_rate': 5e-01}
-                best_input_data, losses = train_input(input_data, train_iteratee, optimizer, config, max_iter=1000)
+                best_input_data, losses = train_input(
+                    input_data, 
+                    train_iteratee, 
+                    optimizer, 
+                    config, 
+                    max_iter=args.max_iter)
 
                 print('Dumping data')
                 prefix = str(current_iter).zfill(4)
-                suffix = '_alpha' + str(alpha) +'_beta' + str(beta) + '_gamma' + str(gamma)
-                filename = prefix + '_gatys_paper_feat' + layer_name_feat + suffix
-                dump_as_hdf5(resultsDir + '/' + filename + ".hdf5", best_input_data[0])
+                suffix = "_alpha%f_beta%f_gamma%f" % (alpha, beta, gamma)
+                filename = prefix + '_content' + lc_name + suffix
+                # dump_as_hdf5(resultsDir + '/' + filename + ".hdf5", best_input_data[0])
                 save_image(resultsDir + '/' + filename + '.png', deprocess(best_input_data[0], dim_ordering='th'))
                 plot_losses(losses, resultsDir, prefix, suffix)
 
