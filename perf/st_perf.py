@@ -1,52 +1,56 @@
-import os, sys, time
+from __future__ import absolute_import
+
+import os, sys, time, argparse
 
 dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/..')
-
-from keras.utils.visualize_util import plot as plot_model
-from models.style_transfer import style_transfer_conv_transpose as st
  
 from utils.imutils import load_images
+from utils.general import import_model
+from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
+from models.layers.ScaledSigmoid import ScaledSigmoid
 
-dir = os.path.dirname(os.path.realpath(__file__))
-vgg19Dir = dir + '/../vgg19'
-resultsDir = dir + '/../models/results/st2'
-dataDir = dir + '/../data'
-testDir = dataDir + '/test'
+dir = os.path.dirname(os.path.realpath(__file__)) + '/..'
+dataDir = dir + '/data'
+output_dir = dataDir + '/output'
+overfit_dir = dataDir + '/overfit'    
+test_dir = dataDir + '/test'
+
+parser = argparse.ArgumentParser(
+    description='Neural artistic style. Generates an image by combining '
+                'the content of an image and the style of another.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument('--models_dir', default=dir + '/models/data/st', type=str, help='Models top directories.')
+parser.add_argument('--batch_size', default=30, type=int, help='batch size.')
+parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
+args = parser.parse_args()
 
 channels = 3
-width = 600
-height = 600
+width = args.image_size
+height = args.image_size
 input_shape = (channels, width, height)
-batch = 4
 
-print('Loading test set')
-X_test = load_images(testDir, limit=4, size=(height, width), dim_ordering='th', st=True)
+X_test = load_images(test_dir, limit=args.batch_size, size=(height, width), dim_ordering='th', verbose=True, st=True)
 print('X_test.shape: ' + str(X_test.shape))
 
+current_iter = 0
+subdirs = [x[0] for x in os.walk(args.models_dir)]
+subdirs.pop(0) # First element is the parent dir
+for absolute_model_dir in subdirs:    
+    print('Loading model in %s' % absolute_model_dir)
+    st_model = import_model(absolute_model_dir, True, {
+        'ConvolutionTranspose2D': ConvolutionTranspose2D,
+        'ScaledSigmoid': ScaledSigmoid
+    })
 
-model = st(input_shape=input_shape)
-plot_model(model, to_file=dir + '/model.png', show_shapes=True)
-total_params = 0
-for i in range(len(model.layers)):
-    total_params += model.layers[i].count_params()
-print('Total number of params:' + str(total_params))
+    print('Predicting')
+    # time it
+    start = time.clock()
+    num_loop = 1
+    for i in range(num_loop):
+        results = st_model.predict(X_test) # Equivalent to predict([X_test, False])
+    end = time.clock()
+    duration_batch = (end-start)/(X_test.shape[0] * num_loop)
 
-print('Predicting')
-# time it
-start = time.clock()
-num_loop = 1
-for i in range(num_loop):
-    results = model.predict(X_test) # Equivalent to predict([X_test, False])
-end = time.clock()
-duration_batch = (end-start)/(X_test.shape[0] * num_loop)
-
-start = time.clock()
-num_loop = 1
-for i in range(X_test.shape[0]):
-    results = model.predict(X_test[i:i+1, :, :, :]) # Equivalent to predict([X_test, False])
-end = time.clock()
-duration = (end-start)/(X_test.shape[0] * num_loop)
-
-print("duration taken on 1 average call when batching: " + str(duration_batch))
-print("duration taken on 1 average call when looping: " + str(duration))
+    print("duration taken on 1 average call when batching: " + str(duration_batch))
