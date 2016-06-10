@@ -122,7 +122,7 @@ for alpha in [1e1]:
 
             print('Compiling Adam update')
             adam = Adam(lr=1e-03)
-            updates = adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
+            updates = st_model.updates + adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
 
             print('Compiling train function')
             inputs = [st_model.input, K.learning_phase()]

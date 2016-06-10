@@ -12,9 +12,7 @@ from models.layers.ScaledSigmoid import ScaledSigmoid
 
 dir = os.path.dirname(os.path.realpath(__file__))
 dataDir = dir + '/data'
-output_dir = dataDir + '/output/st'
-if not os.path.isdir(output_dir): 
-    os.makedirs(output_dir)
+output_dir = dataDir + '/output'
 overfit_dir = dataDir + '/overfit'    
 test_dir = dataDir + '/test'
 
@@ -40,43 +38,36 @@ print('X_overfit.shape: ' + str(X_overfit.shape))
 
 current_iter = 0
 subdirs = [x[0] for x in os.walk(args.models_dir)]
-subdirs.pop(0)
-print(subdirs)
+subdirs.pop(0) # First element is the parent dir
 for absolute_model_dir in subdirs:    
     print('Loading model in %s' % absolute_model_dir)
     st_model = import_model(absolute_model_dir, True, {
         'ConvolutionTranspose2D': ConvolutionTranspose2D,
         'ScaledSigmoid': ScaledSigmoid
     })
-    predict = K.function([st_model.input, K.learning_phase()], st_model.output)
 
     print('Predicting')
-    results_false = st_model.predict(X_test) # Equivalent to predict([X_test, False])
-    results = predict([X_test, True])
-    results_overfit_false = st_model.predict(X_test) # Equivalent to predict([X_test, False])
-    results_overfit = predict([X_overfit, True])
+    results = st_model.predict(X_test) # Equivalent to predict([X_test, False])
+    results_overfit = st_model.predict(X_overfit) # Equivalent to predict([X_test, False])
 
     print('Dumping results')
-    tmp_output_dir = output_dir + '/' + absolute_model_dir.split('/')[-1]
-    os.makedirs(tmp_output_dir)
+    tmp_output_dir = output_dir + '/' + absolute_model_dir.split('/')[-2] + '/' + absolute_model_dir.split('/')[-1]
+    if not os.path.isdir(tmp_output_dir): 
+        os.makedirs(tmp_output_dir)
     for idx, im in enumerate(results):
         prefix = str(current_iter).zfill(4)
         fullOutPath = tmp_output_dir + '/' + prefix + "_" + str(idx) + ".png"
         save_image_st(fullOutPath, im)
         fullOriPath = tmp_output_dir + '/' + prefix + "_" + str(idx) + "_ori.png"
         save_image_st(fullOriPath, X_test[idx])
-        fullFalsePath = tmp_output_dir + '/' + prefix + "_overfit_" + str(idx) + "_false.png"
-        save_image_st(fullFalsePath, results_false[idx])
 
         current_iter += 1
 
     for idx, im in enumerate(results_overfit):
         prefix = str(current_iter).zfill(4)
-        fullOutPath = tmp_output_dir + '/' + prefix + "_overfit_" + str(idx) + ".png"
+        fullOutPath = tmp_output_dir + '/' + prefix + str(idx) + "_overfit.png"
         save_image_st(fullOutPath, im)
-        fullOriPath = tmp_output_dir + '/' + prefix + "_overfit_" + str(idx) + "_ori.png"
+        fullOriPath = tmp_output_dir + '/' + prefix + str(idx) + "_overfit_ori.png"
         save_image_st(fullOriPath, X_overfit[idx])
-        fullFalsePath = tmp_output_dir + '/' + prefix + "_overfit_" + str(idx) + "_false.png"
-        save_image_st(fullFalsePath, results_overfit_false[idx])
 
         current_iter += 1

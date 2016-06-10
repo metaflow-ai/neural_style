@@ -5,7 +5,7 @@ from keras.engine.training import collect_trainable_weights
 from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
-from models.style_transfer import (style_transfer_conv_transpose)
+from models.style_transfer import style_transfer_conv_transpose
 
 from utils.imutils import plot_losses
 from utils.lossutils import (frobenius_error, train_weights)
@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('--batch_size', default=8, type=int, help='batch size.')
 parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
-parser.add_argument('--max_iter', default=2000, type=int, help='Number of training iter.')
+parser.add_argument('--max_iter', default=500, type=int, help='Number of training iter.')
 parser.add_argument('--nb_res_layer', default=6, type=int, help='Number of residual layers in the style transfer model.')
 args = parser.parse_args()
 
@@ -45,8 +45,9 @@ if os.path.isfile(identityWeightsFullpath):
 train_loss = frobenius_error(st_model.input, st_model.output)
 
 print('Compiling Adam update')
-adam = Adam(lr=5e-02)
-updates = adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
+adam = Adam(lr=1e0)
+print(st_model.updates)
+updates = st_model.updates + adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
 
 print('Compiling train function')
 inputs = [st_model.input, K.learning_phase()]
