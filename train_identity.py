@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('--batch_size', default=8, type=int, help='batch size.')
 parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
-parser.add_argument('--max_iter', default=1000, type=int, help='Number of training iter.')
+parser.add_argument('--max_iter', default=2000, type=int, help='Number of training iter.')
 parser.add_argument('--nb_res_layer', default=6, type=int, help='Number of residual layers in the style transfer model.')
 args = parser.parse_args()
 

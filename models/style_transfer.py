@@ -7,6 +7,7 @@ from keras.layers import Input
 from keras.models import Model
 
 from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
+from models.layers.ScaledSigmoid import ScaledSigmoid
 
 # inputs th ordering, BGR
 def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 600, 600), nb_res_layer=6):
@@ -35,9 +36,9 @@ def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 600, 600), 
         a = Activation('relu')(bn)
         c = Convolution2D(128, 3, 3, 
             init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a)
-        # bn = BatchNormalization(axis=1, momentum=0.1, gamma_init='he_normal')(c)
+        bn = BatchNormalization(axis=1, momentum=0.1, gamma_init='he_normal')(c)
         # a = Activation('relu')(bn)
-        last_out = merge([last_out, c], mode='sum')
+        last_out = merge([last_out, bn], mode='sum')
         # last_out = a
 
     ct71 = ConvolutionTranspose2D(64, 3, 3, 
@@ -52,10 +53,10 @@ def style_transfer_conv_transpose(weights_path=None, input_shape=(3, 600, 600), 
 
     c91 = ConvolutionTranspose2D(3, 9, 9, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a81)
-    c92 = Activation(lambda x: 255 * K.sigmoid(x / 255), name="img_sigmoid")(c91)    
+    out = ScaledSigmoid(scaling=255.)(c91)    
 
     
-    model = Model(input=[input], output=[c92])
+    model = Model(input=[input], output=[out])
 
     if weights_path:
         model.load_weights(weights_path)

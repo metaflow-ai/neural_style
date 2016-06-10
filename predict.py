@@ -1,64 +1,82 @@
-import os, re
+from __future__ import absolute_import
+
+import os, argparse
 
 from keras import backend as K
 
-from models.style_transfer import (style_transfer_conv_transpose)
+from models.style_transfer import style_transfer_conv_transpose
 from utils.imutils import load_images, save_image_st
+from utils.general import import_model
+from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
+from models.layers.ScaledSigmoid import ScaledSigmoid
 
 dir = os.path.dirname(os.path.realpath(__file__))
 dataDir = dir + '/data'
-weightsDir = dir + '/models/weights/st'
-if not os.path.isdir(weightsDir): 
-    os.makedirs(weightsDir)
-outputDir = dataDir + '/output'
-if not os.path.isdir(outputDir): 
-    os.makedirs(outputDir)
-overfitDir = dataDir + '/overfit'    
-testDir = dataDir + '/test'
+output_dir = dataDir + '/output/st'
+if not os.path.isdir(output_dir): 
+    os.makedirs(output_dir)
+overfit_dir = dataDir + '/overfit'    
+test_dir = dataDir + '/test'
+
+parser = argparse.ArgumentParser(
+    description='Neural artistic style. Generates an image by combining '
+                'the content of an image and the style of another.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument('--models_dir', default=dir + '/models/data/st', type=str, help='Models top directories.')
+parser.add_argument('--batch_size', default=20, type=int, help='batch size.')
+parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
+args = parser.parse_args()
 
 channels = 3
-width = 600
-height = 600
+width = args.image_size
+height = args.image_size
 input_shape = (channels, width, height)
 
-X_overfit = load_images(overfitDir, size=(height, width), dim_ordering='th', verbose=True, st=True)
-X_test = load_images(testDir, limit=20, size=(height, width), dim_ordering='th', verbose=True, st=True)
+X_overfit = load_images(overfit_dir, limit=args.batch_size, size=(height, width), dim_ordering='th', verbose=True, st=True)
+X_test = load_images(test_dir, limit=args.batch_size, size=(height, width), dim_ordering='th', verbose=True, st=True)
 print('X_test.shape: ' + str(X_test.shape))
 print('X_overfit.shape: ' + str(X_overfit.shape))
 
-
-weights_filenames = [f for f in os.listdir(weightsDir) if len(re.findall('.*weights.*\.hdf5$', f))]
 current_iter = 0
-for weights_filename in weights_filenames:
-    fullpath = weightsDir + '/' + weights_filename
-    print('Loading style_transfer with weights file: ' + fullpath)
-    st_model = style_transfer_conv_transpose(fullpath)
+subdirs = [x[0] for x in os.walk(args.models_dir)]
+subdirs.pop(0)
+print(subdirs)
+for absolute_model_dir in subdirs:    
+    print('Loading model in %s' % absolute_model_dir)
+    st_model = import_model(absolute_model_dir, True, {
+        'ConvolutionTranspose2D': ConvolutionTranspose2D,
+        'ScaledSigmoid': ScaledSigmoid
+    })
     predict = K.function([st_model.input, K.learning_phase()], st_model.output)
 
     print('Predicting')
     results_false = st_model.predict(X_test) # Equivalent to predict([X_test, False])
     results = predict([X_test, True])
+    results_overfit_false = st_model.predict(X_test) # Equivalent to predict([X_test, False])
     results_overfit = predict([X_overfit, True])
 
     print('Dumping results')
+    tmp_output_dir = output_dir + '/' + absolute_model_dir.split('/')[-1]
+    os.makedirs(tmp_output_dir)
     for idx, im in enumerate(results):
         prefix = str(current_iter).zfill(4)
-        fullOutPath = outputDir + '/' + prefix + "_" + str(idx) + ".png"
+        fullOutPath = tmp_output_dir + '/' + prefix + "_" + str(idx) + ".png"
         save_image_st(fullOutPath, im)
-        fullOriPath = outputDir + '/' + prefix + "_" + str(idx) + "_ori.png"
+        fullOriPath = tmp_output_dir + '/' + prefix + "_" + str(idx) + "_ori.png"
         save_image_st(fullOriPath, X_test[idx])
-        fullFalsePath = outputDir + '/' + prefix + "_overfit_" + str(idx) + "_false.png"
+        fullFalsePath = tmp_output_dir + '/' + prefix + "_overfit_" + str(idx) + "_false.png"
         save_image_st(fullFalsePath, results_false[idx])
 
         current_iter += 1
 
     for idx, im in enumerate(results_overfit):
         prefix = str(current_iter).zfill(4)
-        fullOutPath = outputDir + '/' + prefix + "_overfit_" + str(idx) + ".png"
+        fullOutPath = tmp_output_dir + '/' + prefix + "_overfit_" + str(idx) + ".png"
         save_image_st(fullOutPath, im)
-        fullOriPath = outputDir + '/' + prefix + "_overfit_" + str(idx) + "_ori.png"
+        fullOriPath = tmp_output_dir + '/' + prefix + "_overfit_" + str(idx) + "_ori.png"
         save_image_st(fullOriPath, X_overfit[idx])
-        fullFalsePath = outputDir + '/' + prefix + "_overfit_" + str(idx) + "_false.png"
-        save_image_st(fullFalsePath, results_false[idx])
+        fullFalsePath = tmp_output_dir + '/' + prefix + "_overfit_" + str(idx) + "_false.png"
+        save_image_st(fullFalsePath, results_overfit_false[idx])
 
         current_iter += 1

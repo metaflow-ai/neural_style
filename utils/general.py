@@ -38,13 +38,16 @@ def export_model(model, absolute_model_dir, best_weights=None):
         model.save_weights(absolute_model_dir + "/best_weights.hdf5", overwrite=True)
     open(absolute_model_dir + "/archi.json", 'w').write(model.to_json())
 
-def import_model(absolute_model_dir):
+def import_model(absolute_model_dir, best=True, custom_objects={}):
     archi_json = open(absolute_model_dir + '/archi.json').read()
-    model = model_from_json(archi_json)
+    model = model_from_json(archi_json, custom_objects)
 
-    if os.path.isfile(absolute_model_dir + '/best_weights.hdf5'):
+    if os.path.isfile(absolute_model_dir + '/best_weights.hdf5') and best:
         model.load_weights(absolute_model_dir + '/best_weights.hdf5')
     else:
         model.load_weights(absolute_model_dir + '/last_weights.hdf5')
 
     return model
+
+def mask_data(data, selector):
+    return [d for d, s in zip(data, selector) if s]
