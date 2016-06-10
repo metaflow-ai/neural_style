@@ -26,7 +26,7 @@ parser.add_argument('--content', default=dataDir + '/overfit/000.jpg', type=str,
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
 parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
-parser.add_argument('--max_iter', default=1500, type=int, help='Number of training iter.')
+parser.add_argument('--max_iter', default=700, type=int, help='Number of training iter.')
 parser.add_argument('--input_type', default='random', type=str, choices=['random', 'content'], help='How to initialize the input data')
 args = parser.parse_args()
 
@@ -62,8 +62,8 @@ layer_weights = json.load(open(dataDir + '/output/vgg19/reconstruction/layer_wei
 # Layer chosen thanks to the pre_analysis script
 # conv_1_* layers have a weird border effect
 # conv_5_* layers doesn't hold enough information to rebuild the structure of the content/style
-style_layers = ['conv_2_1', 'conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_3']
-content_layers = ['conv_2_2', 'conv_3_2', 'conv_4_2']
+style_layers = ['conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_2']
+content_layers = ['conv_2_2', 'conv_3_2']
 style_output_layers = [layer_dict[ls_name].output for ls_name in style_layers]
 content_output_layers = [layer_dict[lc_name].output for lc_name in content_layers]
 
@@ -101,13 +101,13 @@ for idx, content_output in enumerate(content_output_layers):
     content = frobenius_error(y_contents[idx], content_output)
     print('Compiling VGG headless 5 for ' + lc_name + ' content reconstruction')
     # Those hyper parameters are selected thx to pre_analysis scripts
-    for alpha in [3e1, 6e1, 1e2]:
+    for alpha in [1e0, 1e1, 3e1]:
         for beta in [1e0]:
-            for gamma in [6e-6, 1e-5, 6e-5]:
+            for gamma in [1e-8, 1e-7, 1e-6]:
                 print("alpha, beta, gamma:", alpha, beta, gamma)
 
                 print('Computing train loss')
-                tls = [alpha * train_loss_style / layer_weights[style_layers[idx]]['style'] for idx, train_loss_style in enumerate(train_loss_styles)]
+                tls = [alpha * train_loss_style / layer_weights[style_layers[style_idx]]['style'] for style_idx, train_loss_style in enumerate(train_loss_styles)]
                 tlc = beta * content / layer_weights[lc_name]['content'] * len(tls)
                 rtv = gamma * reg_TV
                 train_loss =  sum(tls) + tlc + rtv
