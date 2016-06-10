@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('--models_dir', default=dir + '/models/data/st', type=str, help='Models top directories.')
 parser.add_argument('--batch_size', default=30, type=int, help='batch size.')
-parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
+parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
 args = parser.parse_args()
 
 channels = 3
@@ -44,13 +44,19 @@ for absolute_model_dir in subdirs:
         'ScaledSigmoid': ScaledSigmoid
     })
 
-    print('Predicting')
-    # time it
+    print('Timing batching')
     start = time.clock()
-    num_loop = 1
-    for i in range(num_loop):
-        results = st_model.predict(X_test) # Equivalent to predict([X_test, False])
+    results = st_model.predict(X_test)
     end = time.clock()
-    duration_batch = (end-start)/(X_test.shape[0] * num_loop)
+    duration_batch = (end-start)/X_test.shape[0]
+
+    print('Timing looping')
+    start = time.clock()
+    num_loop = 30
+    for i in range(num_loop):
+        results = st_model.predict(X_test[0:1, :, :, :])
+    end = time.clock()
+    duration_loop = (end-start)/num_loop
 
     print("duration taken on 1 average call when batching: " + str(duration_batch))
+    print("duration taken on 1 average call when looping: " + str(duration_loop))
