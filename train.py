@@ -115,8 +115,8 @@ for alpha in [1e1]:
         
             st_model.set_weights(init_weights)
             print('Compiling train loss')
-            tls = [alpha * train_loss_style / layer_weights[style_layers[style_idx]]['style'] for style_idx, train_loss_style in enumerate(train_loss_styles)]
-            tlc = [beta * len(tls) * train_loss_content / layer_weights[content_layers[content_idx]]['content'] for content_idx, train_loss_content in enumerate(train_loss_contents)]
+            tls = [alpha * train_loss_style / layer_weights[style_layers[style_idx]]['style']['min'] for style_idx, train_loss_style in enumerate(train_loss_styles)]
+            tlc = [beta * len(tls) * train_loss_content / layer_weights[content_layers[content_idx]]['content']['min'] for content_idx, train_loss_content in enumerate(train_loss_contents)]
             rtv = gamma * reg_TV
             train_loss =  sum(tls) + sum(tlc) + rtv
 

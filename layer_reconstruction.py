@@ -103,8 +103,16 @@ for layer_name in layers_names:
     plot_losses(content_losses, resultsDir, prefix + '_content_')
 
     mean_losses[layer_name] = {
-        'style': np.mean(style_losses['training_loss']),
-        'content': np.mean(content_losses['training_loss'])
+        'style': {
+            'min': min(style_losses['training_loss']),
+            'mean': np.mean(style_losses['training_loss']),
+            'max': max(style_losses['training_loss'])
+        },
+        'content': {
+            'min': min(content_losses['training_loss']),
+            'mean': np.mean(content_losses['training_loss']),
+            'max': max(content_losses['training_loss'])
+        }
     }
 
     current_iter += 1
