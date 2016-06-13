@@ -26,7 +26,7 @@ parser.add_argument('--content', default=dataDir + '/overfit/000.jpg', type=str,
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
 parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
-parser.add_argument('--max_iter', default=1000, type=int, help='Number of training iter.')
+parser.add_argument('--max_iter', default=600, type=int, help='Number of training iter.')
 parser.add_argument('--input_type', default='random', type=str, choices=['random', 'content'], help='How to initialize the input data')
 parser.add_argument('--print_inter_img', default=False, type=bool, help='Print intermediate images')
 args = parser.parse_args()
@@ -61,9 +61,8 @@ input_layer = model.input
 layer_weights = json.load(open(dataDir + '/output/vgg19/reconstruction/layer_weights.json', 'r'))
 
 # Layer chosen thanks to the pre_analysis script
-# conv_1_* layers have a weird border effect
 # conv_5_* layers doesn't hold enough information to rebuild the structure of the content/style
-style_layers = ['conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_2']
+style_layers = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_2']
 content_layers = ['conv_3_2']
 style_output_layers = [layer_dict[ls_name].output for ls_name in style_layers]
 content_output_layers = [layer_dict[lc_name].output for lc_name in content_layers]
@@ -93,7 +92,6 @@ elif args.input_type == 'content':
     input_data = X_train.copy()
 else:
     raise Exception('Input type choices are random|content')
-# input_data = X_train_style.copy()
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1
@@ -124,7 +122,7 @@ for idx, content_output in enumerate(content_output_layers):
                 print('Computing iteratee function')
                 train_iteratee = K.function(inputs, outputs)
 
-                config = {'learning_rate': 1e0}
+                config = {'learning_rate': 5e-1} #Can't go faster than that
                 prefix = str(current_iter).zfill(4)
                 suffix = "_alpha%f_beta%f_gamma%f" % (alpha, beta, gamma)
                 filename = prefix + '_content' + lc_name + suffix
@@ -132,7 +130,7 @@ for idx, content_output in enumerate(content_output_layers):
                     current_iter = obj['current_iter']
                     input_data = obj['input_data']
                     if current_iter % 25 == 0 and args.print_inter_img == True:
-                        save_image(resultsDir + '/' + filename + '_' + str(current_iter) + '.png', deprocess(input_data[0], dim_ordering='th'))
+                        save_image(resultsDir + '/' + filename + '_' + str(current_iter.zfill(5)) + '.png', deprocess(input_data[0], dim_ordering='th'))
 
                 best_input_data, losses = train_input(
                     input_data, 
