@@ -83,7 +83,7 @@ def total_variation_error(y, beta=1):
 # Training
 ##########
 def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2000, callbacks=[]):
-    losses = {'training_loss': [], 'cv_loss': [], 'best_loss': 1e15}
+    losses = {'loss': [], 'val_loss': [], 'best_loss': 1e15}
 
     wait = 0
     best_input_data = None    
@@ -91,20 +91,20 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
         for i in range(max_iter):
                
             data = train_iteratee([input_data])
-            training_loss = data[0].item(0)
+            loss = data[0].item(0)
             grads_val = data[1]
 
-            losses['training_loss'].append(training_loss)
+            losses['loss'].append(loss)
             if i % 25 == 0:
                 print('Iteration: %d/%d' % (i, max_iter) )
-                for idx, loss in enumerate(data):
+                for idx, subloss in enumerate(data):
                     if idx < 2:
                         continue
-                    print('    loss %d: %f' % (idx - 1, loss))
-                print('    training_loss: %f' % (training_loss))
+                    print('    loss %d: %f' % (idx - 1, subloss))
+                print('    loss: %f' % (loss))
 
-            if training_loss < losses['best_loss']:
-                losses['best_loss'] = training_loss
+            if loss < losses['best_loss']:
+                losses['best_loss'] = loss
                 best_input_data = np.copy(input_data)
                 wait = 0
             else:
@@ -129,20 +129,20 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
             x = np.reshape(x, input_data.shape)
 
             data = train_iteratee([x])
-            training_loss = data[0].item(0)
+            loss = data[0].item(0)
             grads_val = data[1]
             
-            losses['training_loss'].append(training_loss)
+            losses['loss'].append(loss)
             if gogh_inc_val % 25 == 0:
                 print('Iteration: %d/%d' % (gogh_inc_val, max_iter) )
-                for idx, loss in enumerate(data):
+                for idx, subloss in enumerate(data):
                     if idx < 2:
                         continue
-                    print('    loss %d: %f' % (idx - 1, loss))
-                print('    training_loss: %f' % (training_loss))
+                    print('    loss %d: %f' % (idx - 1, subloss))
+                print('    loss: %f' % (loss))
 
-            if training_loss < losses['best_loss']:
-                losses['best_loss'] = training_loss
+            if loss < losses['best_loss']:
+                losses['best_loss'] = loss
 
             for callback in callbacks:
                 callback({
@@ -151,7 +151,7 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
                     'input_data':input_data
                 })
 
-            return training_loss, grads_val.reshape(-1)
+            return loss, grads_val.reshape(-1)
 
         best_input_data, f ,d = fmin_l_bfgs_b(iter, input_data, factr=1e7, maxiter=max_iter) #factr: 1e7 default value
         best_input_data = np.reshape(best_input_data, input_data.shape)
@@ -159,8 +159,8 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
     print("final loss:", losses['best_loss'])
     return best_input_data, losses
 
-def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max_iter=2000, batch_size=4, callbacks=[]):
-    losses = {'training_loss': [], 'cv_loss': [], 'best_loss': 1e15}
+def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max_iter=2000, batch_size=4, callbacks=[], load_result=False):
+    losses = {'loss': [], 'val_loss': [], 'best_loss': 1e15}
     
     best_weights = model.get_weights()
 
@@ -171,7 +171,7 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
     batch_size = min(batch_size, len(files))
     print('total_files %d' % len(files))
 
-    max_epoch = math.ceil((batch_size * max_iter) / len(files))
+    max_epoch = math.floor((batch_size * max_iter) / len(files)) + 1
     while need_more_training:
         print('Epoch %d/%d' % (current_epoch, max_epoch))
         nb_elem = min((max_iter - current_iter) * batch_size, len(files))
@@ -179,33 +179,41 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
         progbar_values = []
 
         ims = []
+        y_ims = []
         for idx, fullpath in enumerate(files):
-            
-            im = load_image_st(fullpath, size=size, verbose=False) # th ordering, BGR
+            if load_result == True:
+                im, y_im = load_image_st(fullpath, size=size, verbose=False, load_result=load_result) # th ordering, BGR
+                y_ims.append(y_im)
+            else:
+                im = load_image_st(fullpath, size=size, verbose=False, load_result=load_result) # th ordering, BGR
             ims.append(im)
+
             if len(ims) >= batch_size or idx == len(files) - 1:
                 current_iter += 1
-                data = train_iteratee([np.array(ims), True])
-
-                training_loss = data[0].item(0)
-                losses['training_loss'].append(training_loss)
-                progbar_values.append(('training_loss', training_loss))
-                for loss_idx, loss in enumerate(data):
+                if load_result == True:
+                    data = train_iteratee([np.array(ims), np.array(y_ims), True])
+                else:
+                    data = train_iteratee([np.array(ims), True])
+ 
+                loss = data[0].item(0)
+                losses['loss'].append(loss)
+                progbar_values.append(('loss', loss))
+                for loss_idx, subloss in enumerate(data):
                     if loss_idx < 1:
                         continue
-                    progbar_values.append(('loss ' + str(loss_idx), loss))
+                    progbar_values.append(('loss ' + str(loss_idx), subloss))
                 progbar.update(idx + 1, progbar_values)
 
-                if training_loss < losses['best_loss']:
-                    losses['best_loss'] = training_loss
+                if loss < losses['best_loss']:
+                    losses['best_loss'] = loss
                     best_weights = model.get_weights()
 
                 for callback in callbacks:
                     callback({
-                        current_iter:current_iter,
+                        current_iter: current_iter,
                         losses: losses,
                         model: model,
-                        data:data
+                        data: data
                     })
 
                 ims = []

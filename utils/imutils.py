@@ -28,8 +28,15 @@ def memoize(obj):
 
     return memoizer
 
-def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=False, st=False):
+def load_data(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=False, st=False):
+    X, y = load_images(absPath, limit, size, dim_ordering, verbose=verbose, st=st, load_result=True)
+    X_cv, y_cv = load_images(absPath + '/cv', limit, size, dim_ordering, verbose=verbose, st=st, load_result=True)
+        
+    return (X, y), (X_cv, y_cv)
+
+def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=False, st=False, load_result=False):
     ims = []
+    y_ims = []
     filenames = [f for f in os.listdir(absPath) if len(re.findall('\.(jpe?g|png)$', f))]
     for idx, filename in enumerate(filenames):
         if limit > 0 and idx >= limit:
@@ -37,36 +44,80 @@ def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=F
         
         fullpath = absPath + '/' + filename
         if st:
-            im = load_image_st(fullpath, size, verbose)
+            if load_result == True:
+                im, y_im = load_image_st(fullpath, size, verbose, load_result)
+            else:
+                im = load_image_st(fullpath, size, verbose, load_result)
         else:
-            im = load_image(fullpath, size, dim_ordering, verbose)
+            if load_result == True:
+                im, y_im = load_image(fullpath, size, dim_ordering, verbose, load_result)
+            else:
+                im = load_image(fullpath, size, dim_ordering, verbose, load_result)
+
         ims.append(im)
+        if load_result == True:
+            y_ims.append(y_im)
 
-    return np.array(ims)
+    if load_result == True:
+        return np.array(ims), np.array(y_ims)
+    else:
+        return np.array(ims)
 
-def load_image(fullpath, size=(600, 600), dim_ordering='tf', verbose=False):
+def load_image(fullpath, size=(600, 600), dim_ordering='tf', verbose=False, load_result=False):
     if verbose:
-        print('Loading ' + fullpath)
+        print('Loading %s' % fullpath)
     # VGG needs BGR data
     im = misc.imread(fullpath, mode='RGB') # height, width, channels
     im = preprocess(im.copy(), size)
-
     if dim_ordering == 'th':
         im = im.transpose(2, 0, 1)
 
+    if load_result == True:
+        y_fullpath = get_y_fullpath(fullpath)
+        if verbose:
+            print('Loading %s' % y_fullpath)
+
+        y_im = misc.imread(y_fullpath, mode='RGB') # height, width, channels
+        y_im = preprocess(y_im.copy(), size)
+        if dim_ordering == 'th':
+            y_im = y_im.transpose(2, 0, 1)
+
+        return im, y_im
+
     return im
 
-def load_image_st(fullpath, size=(600, 600), verbose=False):
+def load_image_st(fullpath, size=(600, 600), verbose=False, load_result=False):
     if verbose:
-        print('Loading ' + fullpath)
+        print('Loading %s' % fullpath)
+
+    perm = np.argsort([2, 1, 0])
 
     im = misc.imread(fullpath, mode='RGB') # tf ordering, RGB
     im = resize(im, size)
-    perm = np.argsort([2, 1, 0])
     im = im[:, :, perm] # th ordering, BGR
     im = im.transpose(2, 0, 1) # th ordering, BGR
+    im = im.copy().astype(K.floatx())
 
-    return im.copy().astype(K.floatx())
+    if load_result == True:
+        y_fullpath = get_y_fullpath(fullpath)
+        if verbose:
+            print('Loading %s' % y_fullpath)
+        y_im = misc.imread(y_fullpath, mode='RGB') # tf ordering, RGB
+        y_im = resize(y_im, size)
+        y_im = y_im[:, :, perm] # th ordering, BGR
+        y_im = y_im.transpose(2, 0, 1) # th ordering, BGR
+        y_im = y_im.copy().astype(K.floatx())
+
+        return im, y_im
+
+    return im
+
+def get_y_fullpath(x_fullpath):
+    splitted_fullpath = x_fullpath.split('/')
+    filename = splitted_fullpath.pop()
+    y_fullpath = '/'.join(splitted_fullpath + ['results', filename])
+
+    return y_fullpath
 
 def resize(im, size):
     if size == None:
@@ -172,25 +223,25 @@ def dump_as_hdf5(fullpath, data):
 
 def plot_losses(losses, dir='', prefix='', suffix=''):
     plt.clf()
-    if len(losses['cv_loss']):
+    if len(losses['val_loss']):
         plt.subplot(2, 1, 1)
-        plt.plot(losses['training_loss'])
+        plt.plot(losses['loss'])
         plt.title('Training loss')
         plt.xlabel('Iteration number')
         plt.ylabel('Loss value')
 
         plt.subplot(2, 1, 2)
-        plt.plot(losses['cv_loss'])
+        plt.plot(losses['val_loss'])
         plt.title('Cross validation loss')
         plt.xlabel('Iteration number')
         plt.ylabel('Loss value')
 
-        plt.savefig(dir + '/' + prefix + 'cv_loss' + suffix + '.png')
+        plt.savefig(dir + '/' + prefix + 'val_loss' + suffix + '.png')
         plt.clf()
     else:
-        plt.plot(losses['training_loss'])
+        plt.plot(losses['loss'])
         plt.title('Training loss')
         plt.xlabel('Iteration number')
         plt.ylabel('Loss value')
-        plt.savefig(dir + '/' + prefix + 'training_loss' + suffix + '.png')
+        plt.savefig(dir + '/' + prefix + 'loss' + suffix + '.png')
         plt.clf()
