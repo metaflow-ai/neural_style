@@ -7,7 +7,6 @@ require 'hdf5'
 require 'json'
 
 --------------------------------------------------------------------------------
-
 local cmd = torch.CmdLine()
 
 -- Basic options
@@ -56,6 +55,8 @@ function loadModel(model_folder)
       end
     elseif layer.class_name == 'Activation' then
       current_layer = buildActivation(layer)
+    else
+      current_layer = buildCustom(layer)
     end
     
 
@@ -135,6 +136,13 @@ function loadData(modelFolder)
   local archi, weights
   if file_exists(modelFolder .. '/' .. archiFilename) then
     archi = json.load(modelFolder .. '/' .. archiFilename)
+    if archi.config.layers[1].config.input_dtype == 'float32' then
+      torch.setdefaulttensortype('torch.FloatTensor')
+    elseif archi.config.layers[1].config.input_dtype == 'float64' then
+      torch.setdefaulttensortype('torch.DoubleTensor')
+    else
+      error('Tensor type "%s" not supported yet' % archi.config.layers[1].config.input_dtype)
+    end
   else
     error('Model architecture file "%s" not found in folder "%s"' % { archiFilename, modelFolder })
   end
@@ -171,8 +179,8 @@ function buildConvolution2D(nInputPlane, layer, weights)
   local net_layer = nn.SpatialConvolution(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW)
 
   -- Loading weights
-  local weight = weights[layer.name][layer.name .. "_W"]:double()
-  local bias = weights[layer.name][layer.name .. "_b"]:double()
+  local weight = weights[layer.name][layer.name .. "_W"]:float()
+  local bias = weights[layer.name][layer.name .. "_b"]:float()
   -- We need to reverse the matrix weight to perform the exact same calculation
   -- in torch and in theano
   reversedWeight = image.flip(weight, 3)
@@ -201,8 +209,8 @@ function buildConvolutionTranspose2D(nInputPlane, layer, weights)
   local net_layer = nn.SpatialFullConvolution(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW, padH)
 
   -- Loading weights
-  local weight = weights[layer.name][layer.name .. "_W"]:double()
-  local bias = weights[layer.name][layer.name .. "_b"]:double()
+  local weight = weights[layer.name][layer.name .. "_W"]:float()
+  local bias = weights[layer.name][layer.name .. "_b"]:float()
   -- We need to reverse the matrix weight to perform the exact same calculation
   -- in torch and in theano
   reversedWeight = image.flip(weight, 3)
@@ -217,11 +225,11 @@ function buildBatchNormalization(nInputPlane, layer, weights)
   local net_layer = nn.SpatialBatchNormalization(nInputPlane, layer.config.epsilon, layer.config.momentum, layer.config.trainable)
 
   -- Loading weights
-  net_layer.bias = weights[layer.name][layer.name .. "_beta"]:double()
-  net_layer.weight = weights[layer.name][layer.name .. "_gamma"]:double()
-  local std = weights[layer.name][layer.name .. "_running_std"]:double()
+  net_layer.bias = weights[layer.name][layer.name .. "_beta"]:float()
+  net_layer.weight = weights[layer.name][layer.name .. "_gamma"]:float()
+  local std = weights[layer.name][layer.name .. "_running_std"]:float()
   net_layer.running_var = torch.Tensor(std):fill(1):cdiv(torch.cmul(std, std))
-  net_layer.running_mean = weights[layer.name][layer.name .. "_running_mean"]:double()
+  net_layer.running_mean = weights[layer.name][layer.name .. "_running_mean"]:float()
 
   return net_layer
 end
@@ -230,12 +238,20 @@ function buildActivation(layer)
   if layer.config.activation == 'relu' then
     return nn.ReLU()
   elseif layer.config.activation == '<lambda>' then
+    
+  end
+end
+
+function buildCustom(layer)
+  if layer.class_name == 'ScaledSigmoid' then
     return function (node)
-      node = nn.MulConstant(1 / 255)(node)
+      node = nn.MulConstant(1 / layer.config.scaling)(node)
       node = nn.Sigmoid()(node)
-      node = nn.MulConstant(255)(node)
+      node = nn.MulConstant(layer.config.scaling)(node)
       return node
     end
+  else
+    error('Can\'t load classname "%s"' % layer.class_name)
   end
 end
 

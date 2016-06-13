@@ -17,15 +17,15 @@ cmd:option('-image_size', 3, 'Maximum height / width of generated image')
 cmd:option('-model_name', 'models/my_model.dat')
 
 local function main(params)
+  -- Load input img
+  inputImg = loadImg(params.input_img, params.image_size)
+  
   -- Load net
   net = torch.load(params.model_name)  
 
-  -- Load input img
-  inputImg = loadImg(params.input_img, params.image_size)
-
   -- Forward input img
   local outImg = net:forward(inputImg)
-  print(inputImg, outImg:int())
+  -- print(inputImg, outImg:int())
   
   -- Sage output img
   saveImg(outImg, params.output_image)
