@@ -179,8 +179,8 @@ function buildConvolution2D(nInputPlane, layer, weights)
   local net_layer = nn.SpatialConvolution(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW)
 
   -- Loading weights
-  local weight = weights[layer.name][layer.name .. "_W"]:float()
-  local bias = weights[layer.name][layer.name .. "_b"]:float()
+  local weight = weights[layer.name][layer.name .. "_W"]
+  local bias = weights[layer.name][layer.name .. "_b"]
   -- We need to reverse the matrix weight to perform the exact same calculation
   -- in torch and in theano
   reversedWeight = image.flip(weight, 3)
@@ -209,8 +209,8 @@ function buildConvolutionTranspose2D(nInputPlane, layer, weights)
   local net_layer = nn.SpatialFullConvolution(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW, padH)
 
   -- Loading weights
-  local weight = weights[layer.name][layer.name .. "_W"]:float()
-  local bias = weights[layer.name][layer.name .. "_b"]:float()
+  local weight = weights[layer.name][layer.name .. "_W"]
+  local bias = weights[layer.name][layer.name .. "_b"]
   -- We need to reverse the matrix weight to perform the exact same calculation
   -- in torch and in theano
   reversedWeight = image.flip(weight, 3)
@@ -225,11 +225,11 @@ function buildBatchNormalization(nInputPlane, layer, weights)
   local net_layer = nn.SpatialBatchNormalization(nInputPlane, layer.config.epsilon, layer.config.momentum, layer.config.trainable)
 
   -- Loading weights
-  net_layer.bias = weights[layer.name][layer.name .. "_beta"]:float()
-  net_layer.weight = weights[layer.name][layer.name .. "_gamma"]:float()
-  local std = weights[layer.name][layer.name .. "_running_std"]:float()
+  net_layer.bias = weights[layer.name][layer.name .. "_beta"]
+  net_layer.weight = weights[layer.name][layer.name .. "_gamma"]
+  local std = weights[layer.name][layer.name .. "_running_std"]
   net_layer.running_var = torch.Tensor(std):fill(1):cdiv(torch.cmul(std, std))
-  net_layer.running_mean = weights[layer.name][layer.name .. "_running_mean"]:float()
+  net_layer.running_mean = weights[layer.name][layer.name .. "_running_mean"]
 
   return net_layer
 end
