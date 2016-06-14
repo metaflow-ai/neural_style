@@ -5,6 +5,8 @@ import os, sys, time, argparse
 dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/..')
  
+from keras.utils.visualize_util import plot as plot_model
+
 from utils.imutils import load_images
 from utils.general import import_model
 from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
@@ -13,7 +15,6 @@ from models.layers.ScaledSigmoid import ScaledSigmoid
 dir = os.path.dirname(os.path.realpath(__file__)) + '/..'
 dataDir = dir + '/data'
 output_dir = dataDir + '/output'
-overfit_dir = dataDir + '/overfit'    
 test_dir = dataDir + '/test'
 
 parser = argparse.ArgumentParser(
@@ -37,12 +38,13 @@ print('X_test.shape: ' + str(X_test.shape))
 current_iter = 0
 subdirs = [x[0] for x in os.walk(args.models_dir)]
 subdirs.pop(0) # First element is the parent dir
-for absolute_model_dir in subdirs:    
+for idx, absolute_model_dir in enumerate(subdirs):
     print('Loading model in %s' % absolute_model_dir)
     st_model = import_model(absolute_model_dir, True, {
         'ConvolutionTranspose2D': ConvolutionTranspose2D,
         'ScaledSigmoid': ScaledSigmoid
     })
+    plot_model(st_model, to_file=output_dir + '/' + str(idx) + '.png', show_shapes=True)
 
     print('Timing batching')
     start = time.clock()

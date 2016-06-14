@@ -4,7 +4,6 @@ import numpy as np
 from keras import backend as K
 from keras.engine.training import collect_trainable_weights
 from keras.optimizers import Adam
-# from keras.utils.visualize_util import plot as plot_model
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 from models.style_transfer import (style_transfer_conv_transpose)

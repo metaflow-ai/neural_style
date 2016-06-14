@@ -26,7 +26,7 @@ parser.add_argument('--content', default=dataDir + '/overfit/000.jpg', type=str,
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
 parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
-parser.add_argument('--max_iter', default=600, type=int, help='Number of training iter.')
+parser.add_argument('--max_iter', default=500, type=int, help='Number of training iter.')
 parser.add_argument('--input_type', default='random', type=str, choices=['random', 'content'], help='How to initialize the input data')
 parser.add_argument('--print_inter_img', default=False, type=bool, help='Print intermediate images')
 args = parser.parse_args()
