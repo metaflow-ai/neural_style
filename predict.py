@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('--models_dir', default=dir + '/models/data/st', type=str, help='Models top directories.')
 parser.add_argument('--batch_size', default=20, type=int, help='batch size.')
-parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
+parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
 args = parser.parse_args()
 
 channels = 3
