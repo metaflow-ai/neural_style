@@ -17,8 +17,6 @@ from utils.imutils import load_image_st
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
-from theano import tensor as T
-
 class TestImUtils(unittest.TestCase):
 
     def test_export_model(self):
