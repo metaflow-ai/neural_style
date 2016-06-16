@@ -78,19 +78,6 @@ print('Creating training labels')
 predict_style = K.function([input_layer], style_output_layers)
 y_styles = predict_style([X_train_style])
 predict_content = K.function([input_layer], content_output_layers)
-batch_size = 8
-nb_iter = int(math.floor(X_train.shape[0] / batch_size) + 1)
-y_contents = []
-print(nb_iter)
-for i in range(nb_iter):
-    if i == nb_iter - 1:
-        y_contents_tmp = predict_content([X_train[i*batch_size:]])
-    else:        
-        y_contents_tmp = predict_content([X_train[i*batch_size:i*batch_size + batch_size]])
-
-    for y_content_tmp_idx, y_contents_tmp in enumerate(y_contents):
-        y_contents[y_content_tmp_idx].concatenate(y_contents_tmp)
-y_contents = predict_content([X_train])
 
 print('Preparing training loss functions')
 train_loss_styles = []
@@ -136,7 +123,8 @@ for file_idx in range(len(X_train)):
     current_iter = 1
     for idx, content_output in enumerate(content_output_layers):
         lc_name = content_layers[idx]
-        train_content_loss = frobenius_error(y_contents[idx][file_idx:file_idx+1, :, :, :], content_output)
+        y_contents = predict_content([X_train[file_idx:file_idx+1]])
+        train_content_loss = frobenius_error(y_contents[idx], content_output)
         print('Compiling VGG headless 5 for ' + lc_name + ' content reconstruction')
         # Those hyper parameters are selected thx to pre_analysis scripts
         # Made for avg pooling + content init
