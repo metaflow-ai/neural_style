@@ -1,4 +1,4 @@
-import os, argparse, json, time
+import os, argparse, json, time, math
 import numpy as np
 
 from keras import backend as K
@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(
                 'the content of an image and the style of another.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument('--content', default=dataDir + '/overfit/000.jpg', type=str, help='Content image.')
+parser.add_argument('--content', default=dataDir + '/train', type=str, help='Content image.')
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
 parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
@@ -78,6 +78,18 @@ print('Creating training labels')
 predict_style = K.function([input_layer], style_output_layers)
 y_styles = predict_style([X_train_style])
 predict_content = K.function([input_layer], content_output_layers)
+batch_size = 8
+nb_iter = int(math.floor(X_train.shape[0] / batch_size) + 1)
+y_contents = []
+print(nb_iter)
+for i in range(nb_iter):
+    if i == nb_iter - 1:
+        y_contents_tmp = predict_content([X_train[i*batch_size:]])
+    else:        
+        y_contents_tmp = predict_content([X_train[i*batch_size:i*batch_size + batch_size]])
+
+    for y_content_tmp_idx, y_contents_tmp in enumerate(y_contents):
+        y_contents[y_content_tmp_idx].concatenate(y_contents_tmp)
 y_contents = predict_content([X_train])
 
 print('Preparing training loss functions')
