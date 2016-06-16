@@ -5,9 +5,8 @@ from keras import backend as K
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
-from utils.imutils import (load_image, create_noise_tensor, 
-                    dump_as_hdf5, deprocess, save_image,
-                    plot_losses)
+from utils.imutils import (load_image, load_images, create_noise_tensor, 
+                    deprocess, save_image, plot_losses, get_image_list)
 from utils.lossutils import (frobenius_error, total_variation_error, 
                             grams, norm_l2, train_input
                             )
@@ -27,13 +26,15 @@ parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_sc
 parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
 parser.add_argument('--max_iter', default=500, type=int, help='Number of training iter.')
-parser.add_argument('--input_type', default='random', type=str, choices=['random', 'content'], help='How to initialize the input data')
+parser.add_argument('--input_type', default='content', type=str, choices=['random', 'content'], help='How to initialize the input data')
 parser.add_argument('--print_inter_img', default=False, type=bool, help='Print intermediate images')
+parser.add_argument('--output_dir', default=dataDir + '/output/vgg19/gatys_%s' % int(time.time()), type=str, help='optional output dir')
+parser.add_argument('--no_dump_losses', default=False, type=bool, help='Dump a graph of the losses')
 args = parser.parse_args()
 
-resultsDir = dataDir + '/output/vgg19/gatys_%s_%s_%s' % (args.pooling_type, args.input_type, int(time.time()))
-if not os.path.isdir(resultsDir): 
-    os.makedirs(resultsDir)
+output_dir = args.output_dir
+if not os.path.isdir(output_dir): 
+    os.makedirs(output_dir)
 
 optimizer = 'adam'
 if optimizer == 'lbfgs':
@@ -44,7 +45,12 @@ width = args.image_size
 height = args.image_size
 input_shape = (channels, width, height)
 
-X_train = np.array([load_image(args.content, size=(height, width), dim_ordering='th', verbose=True)])
+if os.path.isdir(args.content):
+    print('dir: %s' % args.content)
+    image_list = get_image_list(args.content)
+else:
+    image_list = [args.content]
+X_train = load_images(image_list, size=(height, width), dim_ordering='th', verbose=True)
 print("X_train shape:", X_train.shape)
 
 X_train_style = np.array([load_image(args.style, size=height, dim_ordering='th', verbose=True)])
@@ -58,7 +64,8 @@ print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
 
-layer_weights = json.load(open(dataDir + '/output/vgg19/reconstruction/layer_weights.json', 'r'))
+# This didn't lead to any improvement
+# layer_weights = json.load(open(dataDir + '/output/vgg19/reconstruction/layer_weights.json', 'r'))
 
 # Layer chosen thanks to the pre_analysis script
 # conv_5_* layers doesn't hold enough information to rebuild the structure of the content/style
@@ -85,65 +92,84 @@ for idx, y_style in enumerate(y_styles):
 
 reg_TV = total_variation_error(input_layer, 2)
 
-print('Initializing input %s data' % args.input_type)
-if args.input_type == 'random':
-    input_data = create_noise_tensor(height, width, channels, 'th')
-elif args.input_type == 'content':
-    input_data = X_train.copy()
-else:
-    raise Exception('Input type choices are random|content')
+alphas = [2e2]
+betas = [1e0]
+gammas = [1e-4]
+config = {
+    'style': args.style,
+    'pooling_type': args.pooling_type,
+    'max_iter': args.max_iter,
+    'input_type': args.input_type,
+    'optimizer': optimizer,
+    'style_layers': style_layers,
+    'content_layers': content_layers,
+    'alpha': alphas,
+    'beta': betas,
+    'gamma': gammas,    
+    'learning_rate': 5e-1
+}
+with open(output_dir + '/config.json', 'w') as outfile:
+    json.dump(config, outfile)  
 
 print('Using optimizer: ' + optimizer)
-current_iter = 1
-for idx, content_output in enumerate(content_output_layers):
-    lc_name = content_layers[idx]
-    train_content_loss = frobenius_error(y_contents[idx], content_output)
-    print('Compiling VGG headless 5 for ' + lc_name + ' content reconstruction')
-    # Those hyper parameters are selected thx to pre_analysis scripts
-    # Made for avg pooling + content init
-    for alpha in [2e2]:
-        for beta in [1e0]:
-            for gamma in [1e-4]:
-                print("alpha, beta, gamma:", alpha, beta, gamma)
+for file_idx in range(len(X_train)):
+    print('Initializing input %s data' % args.input_type)
+    if args.input_type == 'random':
+        input_data = create_noise_tensor(height, width, channels, 'th')
+    elif args.input_type == 'content':
+        input_data = X_train[file_idx:file_idx+1, :, :, :].copy()
+    else:
+        raise Exception('Input type choices are random|content')
 
-                print('Computing train loss')
-                tls = [alpha * train_loss_style / len(train_loss_styles) for style_idx, train_loss_style in enumerate(train_loss_styles)]
-                tlc = beta * train_content_loss
-                rtv = gamma * reg_TV
-                train_loss =  sum(tls) + tlc + rtv
+    current_iter = 1
+    for idx, content_output in enumerate(content_output_layers):
+        lc_name = content_layers[idx]
+        train_content_loss = frobenius_error(y_contents[idx][file_idx:file_idx+1, :, :, :], content_output)
+        print('Compiling VGG headless 5 for ' + lc_name + ' content reconstruction')
+        # Those hyper parameters are selected thx to pre_analysis scripts
+        # Made for avg pooling + content init
+        for alpha in alphas:
+            for beta in betas:
+                for gamma in gammas:
+                    print("alpha, beta, gamma:", alpha, beta, gamma)
 
-                print('Computing gradients')
-                grads = K.gradients(train_loss, input_layer)
-                if optimizer == 'adam':
-                    grads = norm_l2(grads)
-                inputs = [input_layer]
-                outputs = [train_loss, grads, tlc] + tls
+                    print('Computing train loss')
+                    tls = [alpha * train_loss_style / len(train_loss_styles) for style_idx, train_loss_style in enumerate(train_loss_styles)]
+                    tlc = beta * train_content_loss
+                    rtv = gamma * reg_TV
+                    train_loss =  sum(tls) + tlc + rtv
 
-                print('Computing iteratee function')
-                train_iteratee = K.function(inputs, outputs)
+                    print('Computing gradients')
+                    grads = K.gradients(train_loss, input_layer)
+                    if optimizer == 'adam':
+                        grads = norm_l2(grads)
+                    inputs = [input_layer]
+                    outputs = [train_loss, grads, tlc] + tls
 
-                config = {'learning_rate': 5e-1} #Can't go faster than that
-                prefix = str(current_iter).zfill(4)
-                suffix = "_alpha%f_beta%f_gamma%f" % (alpha, beta, gamma)
-                filename = prefix + '_content' + lc_name + suffix
-                def lambda_dump_input(obj):
-                    current_iter = obj['current_iter']
-                    input_data = obj['input_data']
-                    if current_iter % 25 == 0 and args.print_inter_img == True:
-                        save_image(resultsDir + '/' + filename + '_' + str(current_iter.zfill(5)) + '.png', deprocess(input_data[0], dim_ordering='th'))
+                    print('Computing iteratee function')
+                    train_iteratee = K.function(inputs, outputs)
+                    filename_array = image_list[file_idx].split('/')[-1].split('.')
 
-                best_input_data, losses = train_input(
-                    input_data, 
-                    train_iteratee, 
-                    optimizer, 
-                    config, 
-                    max_iter=args.max_iter,
-                    callbacks=[lambda_dump_input]
-                )
+                    suffix = "_content%s_alpha%f_beta%f_gamma%f" % (lc_name, alpha, beta, gamma)
+                    out_filename = filename_array[0] + suffix + '.' + filename_array[1]
+                    def lambda_dump_input(obj):
+                        current_iter = obj['current_iter']
+                        input_data = obj['input_data']
+                        if current_iter % 25 == 0 and args.print_inter_img == True:
+                            save_image(output_dir + '/' + filename_array[0] + suffix + + '_' + str(current_iter.zfill(5)) + '.' + filename_array[1], deprocess(input_data[0], dim_ordering='th'))
 
-                print('Dumping data')
-                # dump_as_hdf5(resultsDir + '/' + filename + ".hdf5", best_input_data[0])
-                save_image(resultsDir + '/' + filename + '.png', deprocess(best_input_data[0], dim_ordering='th'))
-                plot_losses(losses, resultsDir, prefix, suffix)
+                    best_input_data, losses = train_input(
+                        input_data, 
+                        train_iteratee, 
+                        optimizer, 
+                        {'learning_rate': config['learning_rate']}, 
+                        max_iter=args.max_iter,
+                        callbacks=[lambda_dump_input]
+                    )
 
-                current_iter += 1
+                    print('Dumping data')
+                    save_image(output_dir + '/' + out_filename, deprocess(best_input_data[0], dim_ordering='th'))
+                    if args.no_dump_losses == False:
+                        plot_losses(losses, output_dir, filename_array[0], suffix)
+
+                    current_iter += 1

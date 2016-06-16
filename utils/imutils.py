@@ -34,15 +34,22 @@ def load_data(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=Fal
         
     return (X, y), (X_cv, y_cv)
 
+def get_image_list(absPath):
+    filenames = [absPath + '/' + f for f in os.listdir(absPath) if len(re.findall('\.(jpe?g|png)$', f))]
+
+    return filenames
+
 def load_images(absPath, limit=-1, size=(600, 600), dim_ordering='tf', verbose=False, st=False, load_result=False):
     ims = []
     y_ims = []
-    filenames = [f for f in os.listdir(absPath) if len(re.findall('\.(jpe?g|png)$', f))]
-    for idx, filename in enumerate(filenames):
+    if type(absPath) == list:
+        fullpaths = absPath
+    else:
+        fullpaths = get_image_list(absPath)
+    for idx, fullpath in enumerate(fullpaths):
         if limit > 0 and idx >= limit:
             break
         
-        fullpath = absPath + '/' + filename
         if st:
             if load_result == True:
                 im, y_im = load_image_st(fullpath, size, verbose, load_result)
@@ -236,12 +243,12 @@ def plot_losses(losses, dir='', prefix='', suffix=''):
         plt.xlabel('Iteration number')
         plt.ylabel('Loss value')
 
-        plt.savefig(dir + '/' + prefix + 'val_loss' + suffix + '.png')
+        plt.savefig(dir + '/' + prefix + '_val_loss' + suffix + '.png')
         plt.clf()
     else:
         plt.plot(losses['loss'])
         plt.title('Training loss')
         plt.xlabel('Iteration number')
         plt.ylabel('Loss value')
-        plt.savefig(dir + '/' + prefix + 'loss' + suffix + '.png')
+        plt.savefig(dir + '/' + prefix + '_loss' + suffix + '.png')
         plt.clf()

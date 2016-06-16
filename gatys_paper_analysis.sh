@@ -34,7 +34,3 @@ do
   fi
 done
 
-# for file in $(ls data/overfit | grep jpg)
-# do
-#     python gatys_paper.py --content data/overfit/$file --pooling_type avg --input_type content --image_size 600 --print_inter_img 1
-# done
