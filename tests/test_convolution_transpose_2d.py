@@ -30,7 +30,6 @@ class TestImUtils(unittest.TestCase):
         strides = (1, 1)
 
         input_shape = (channels_in, height, width)
-        kernel_shape = (channels_in, channels_out, kernel_size, kernel_size)
 
         input = Input(shape=input_shape, dtype=K.floatx())
         conv_layer = ConvolutionTranspose2D(channels_out, kernel_size, kernel_size, 
@@ -39,7 +38,7 @@ class TestImUtils(unittest.TestCase):
         model = Model(input=[input], output=[output])
         model.compile(loss='mean_squared_error', optimizer='sgd')
 
-        x = np.ones((1,) + input_shape).astype(K.floatx())
+        x = np.ones((batch,) + input_shape).astype(K.floatx())
         kernel = conv_layer.W
 
         output_model = model.predict(x)
@@ -48,17 +47,17 @@ class TestImUtils(unittest.TestCase):
                     filter_shape=None, border_mode=border_mode, subsample=strides, filter_flip=True)
             output = y.eval()
         else:
-            output_shape_tensor = conv_layer.get_output_shape_for(x)
-            y = tf.nn.conv2d_transpose(x, kernel, output_shape_tensor, 
-                    (1, ) + strides + (1, ), padding=border_mode.upper())
-            sess = tf.Session()
+            output_shape = conv_layer.get_output_shape_for(K.shape(x))
+            output_shape_tensor = tf.pack([1, output_shape[2], output_shape[3], output_shape[1]])
+            x = tf.transpose(x, (0, 2, 3, 1))
+            kernel = tf.transpose(kernel, (2, 3, 1, 0))
+            y = tf.nn.conv2d_transpose(x, kernel, output_shape_tensor, (1, ) + strides + (1, ), padding=border_mode.upper())
+            y = tf.transpose(y, (0, 3, 1, 2))
+            sess = K.get_session()
             output = sess.run(y)
             
-
-        # print('input shape: ', input_shape)
-        # print('output shape: ', output.shape)
-        # print(output)
-        # print(output_model)
+        self.assertEqual(output.shape, (1, 3, 4, 4))
+        self.assertEqual(True, (output==output_model).all())
 
         # model.fit(x, x + 1, nb_epoch=1)
         

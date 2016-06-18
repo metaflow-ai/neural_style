@@ -120,10 +120,12 @@ class ConvolutionTranspose2D(Layer):
     def build(self, input_shape):
         if self.dim_ordering == 'th':
             stack_size = input_shape[1]
+            # (output channels, input channels, filter rows, filter columns)
+            # But in theano output channels is in fact the input channels of the conv2d transpose
             self.W_shape = (stack_size, self.nb_filter, self.nb_row, self.nb_col)
         elif self.dim_ordering == 'tf':
             stack_size = input_shape[3]
-            self.W_shape = (self.nb_row, self.nb_col, stack_size, self.nb_filter)
+            self.W_shape = (self.nb_row, self.nb_col, self.nb_filter, stack_size)
         else:
             raise Exception('Invalid dim_ordering: ' + self.dim_ordering)
         self.W = self.init(self.W_shape, name='{}_W'.format(self.name))
@@ -250,7 +252,7 @@ class ConvolutionTranspose2D(Layer):
             # TH kernel shape: (depth, input_depth, rows, cols)
             # TF kernel shape: (rows, cols, input_depth, depth)
             x = tf.transpose(x, (0, 2, 3, 1))
-            kernel = tf.transpose(kernel, (2, 3, 0, 1))
+            kernel = tf.transpose(kernel, (2, 3, 1, 0))
             x = tf.nn.conv2d_transpose(x, kernel, output_shape_tensor, strides, padding=padding)
             x.set_shape((None, output_shape[2], output_shape[3], output_shape[1]))
             x = tf.transpose(x, (0, 3, 1, 2))

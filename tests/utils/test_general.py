@@ -31,13 +31,20 @@ class TestImUtils(unittest.TestCase):
 
         os.remove(data_model_folder + '/archi.json')
         os.remove(data_model_folder + '/last_weights.hdf5')
+        if K._BACKEND == 'tensorflow':
+            os.remove(data_model_folder + '/checkpoint')
+            os.remove(data_model_folder + '/tf-last_weights')
+            os.remove(data_model_folder + '/tf-last_weights.meta')
+            os.remove(data_model_folder + '/tf-model_graph')
         os.rmdir(data_model_folder)
 
     def test_import_model(self):
         data_model_folder = dir + "/../fixture/model_conv2d_relu"
         model = import_model(data_model_folder)
-
         input_img = np.array([load_image_st(dir + '/../fixture/blue.png', size=None, verbose=False)])
+
+        # Theano flips kernel ... This is why this test is failing in theano
+
         output = model.predict([input_img]).astype('int32')
         true_output = np.array([
             [
@@ -47,14 +54,14 @@ class TestImUtils(unittest.TestCase):
                     [0, 0, 0]
                 ],
                 [
-                    [318, 254, 103],
-                    [364, 281, 153],
-                    [153, 116, 131]
+                    [131, 116, 153],
+                    [153, 281, 364],
+                    [103, 254, 318]
                 ],
                 [
+                    [52, 1, 0],
                     [0, 0, 0],
-                    [0, 0, 0],
-                    [0, 1, 52]
+                    [0, 0, 0]
                 ]
             ]
         ])

@@ -1,6 +1,9 @@
 import h5py, os
 import numpy as np
 
+from keras import backend as K
+if K._BACKEND == 'tensorflow':
+    import tensorflow as tf
 from keras.models import model_from_json
 
 # You don't need any input layer in a sequential model which usually end up 
@@ -21,7 +24,10 @@ def copySeqWeights(model, weightsFullPath, outputFilename, offset=1, limit=-1):
         weights = [g.get('param_{}'.format(p))[()] for p in range(g.attrs['nb_params'])]
         print(model.layers[k+offset].name)
         if len(weights):
-            weights[0] = np.round(weights[0][:, :, ::-1, ::-1], 4)
+            if K._BACKEND == 'theano': 
+                # I have to do it for theano because theano flips the convolutional kernel
+                # and i don't have access to the API of the conv ops
+                weights[0] = np.round(weights[0][:, :, ::-1, ::-1], 4)
             # print(weights[0].shape)
         model.layers[k+offset].set_weights(weights)
     f.close()
@@ -33,10 +39,24 @@ def export_model(model, absolute_model_dir, best_weights=None):
         os.makedirs(absolute_model_dir)
 
     model.save_weights(absolute_model_dir + "/last_weights.hdf5", overwrite=True)
+    if K._BACKEND == 'tensorflow':
+        sess = K.get_session()
+        saver = tf.train.Saver(var_list=None)
+        saver.save(sess, absolute_model_dir + '/tf-last_weights', global_step=None)
+
     if best_weights != None:
         model.set_weights(best_weights)
         model.save_weights(absolute_model_dir + "/best_weights.hdf5", overwrite=True)
+        if K._BACKEND == 'tensorflow':
+            saver = tf.train.Saver(var_list=None)
+            saver.save(sess, absolute_model_dir + '/tf-best_weights', global_step=None)
+
+    # Graph
     open(absolute_model_dir + "/archi.json", 'w').write(model.to_json())
+    if K._BACKEND == 'tensorflow':
+        graph_def = sess.graph.as_graph_def()
+        tf.train.write_graph(graph_def, absolute_model_dir, 'tf-model_graph')
+
 
 def import_model(absolute_model_dir, best=True, custom_objects={}):
     archi_json = open(absolute_model_dir + '/archi.json').read()

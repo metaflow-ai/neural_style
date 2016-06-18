@@ -27,7 +27,7 @@ class TestImUtils(unittest.TestCase):
         x = K.placeholder(input.shape, name='x')
         loss = total_variation_error(x, 2)
         grad = K.gradients(loss, x)
-        get_grads = theano.function([x], grad)
+        get_grads = K.function([x], grad)
 
         # GradInput result for beta = 2
         true_grad = np.array([[
@@ -51,7 +51,7 @@ class TestImUtils(unittest.TestCase):
             ],
         ]]).astype(K.floatx())
 
-        self.assertEqual(True, (get_grads(input)==true_grad).all())
+        self.assertEqual(True, (get_grads([input])==true_grad).all())
 
     def test_grams(self):
         input = np.zeros((1, 3, 4, 4))
@@ -72,9 +72,9 @@ class TestImUtils(unittest.TestCase):
 
         x = K.placeholder(input.shape, name='x')
         gram_mat = grams(x)
-        get_grams = theano.function([x], gram_mat)        
+        get_grams = K.function([x], [gram_mat])        
 
-        self.assertEqual(True, (get_grams(input)==true_grams).all())
+        self.assertEqual(True, (get_grams([input])[0]==true_grams).all())
 
     def test_grams_loss(self):
         input = np.zeros((1, 3, 4, 4))
@@ -90,9 +90,9 @@ class TestImUtils(unittest.TestCase):
         x = K.placeholder(input.shape, name='x')
         gram_mat = grams(x)
         loss = frobenius_error(gram_mat, np.ones((1, 3, 3)))
-        get_loss = theano.function([x], loss)
+        get_loss = K.function([x], [loss])
         
-        error = get_loss(input)
+        error = get_loss([input])[0]
         true_error = 60344.299382716
         
         self.assertEqual(np.round(error.item(0)), np.round(true_error))
