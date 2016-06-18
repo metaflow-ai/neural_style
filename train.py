@@ -2,16 +2,18 @@ import os, json, gc, time, argparse
 import numpy as np
 
 from keras import backend as K
-from keras.engine.training import collect_trainable_weights
+from keras.models import Model
+from keras.layers.core import Lambda
 from keras.optimizers import Adam
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
-from models.style_transfer import (style_transfer_conv_transpose)
+from models.style_transfer import (style_transfer_conv_transpose
+                                , style_transfer_conv_inception_3)
 
-from utils.imutils import plot_losses, load_image, load_mean
+from utils.imutils import plot_losses, load_mean, get_image_list
 from utils.lossutils import (grams, frobenius_error, 
-                    train_weights, total_variation_error)
-from utils.general import export_model, mask_data
+                    train_weights, total_variation_error_keras)
+from utils.general import export_model, mask_data, generate_data_from_image_list
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
@@ -29,10 +31,11 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
-parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='VGG pooling type.')
+parser.add_argument('--weights', default='', type=str, help='Load pretrained weights')
+parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--batch_size', default=8, type=int, help='batch size.')
 parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
-parser.add_argument('--max_iter', default=2500, type=int, help='Number of training iter.')
+parser.add_argument('--nb_epoch', default=2, type=int, help='Number of epoch.')
 parser.add_argument('--nb_res_layer', default=6, type=int, help='Number of residual layers in the style transfer model.')
 args = parser.parse_args()
 
@@ -42,109 +45,85 @@ height = args.image_size
 input_shape = (channels, width, height)
 batch_size = args.batch_size
 
-X_train_style = np.array([load_image(args.style, size=height, dim_ordering='th', verbose=True)])
-print("X_train_style shape:", X_train_style.shape)
-
 print('Loading style_transfer model')
-stWeightsFullpath = dir + '/models/st_weights.hdf5'
-st_model = style_transfer_conv_transpose(input_shape=input_shape, nb_res_layer=args.nb_res_layer) # th ordering, BGR
-if os.path.isfile(stWeightsFullpath): 
+st_model = style_transfer_conv_inception_3(input_shape=input_shape, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+if os.path.isfile(args.weights): 
     print("Loading weights")
-    st_model.load_weights(stWeightsFullpath)
+    st_model.load_weights(args.weights)
 init_weights = st_model.get_weights()
-# plot_model(st_model, to_file=dir + '/st_model.png', show_shapes=True)
 
 print('Loading VGG headless 5')
 modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
-vgg_model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type='max')
-layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
-print('Layers found:' + ', '.join(layers_names))
+vgg_model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type=args.pooling_type)
 
 print('Selecting layers')
-style_layers = ['conv_2_2', 'conv_3_2', 'conv_3_4', 'conv_4_3']
-style_layers_mask = [name in style_layers for name in layers_names]
-content_layers = ['conv_3_2']
-content_layers_mask = [name in content_layers for name in layers_names]
-
-print('Creating training labels')
-style_outputs_layer = [grams(layer_dict[name].output) for name in style_layers]
-predict_style = K.function([vgg_model.input], style_outputs_layer)
-y_styles = predict_style([X_train_style]) # sub mean, th ordering, BGR
-
-mean = load_mean(name='vgg19', dim_ordering='th') # th ordering, BGR
-vgg_content_input = st_model.input - mean # th, BGR ordering, sub mean
-vgg_content_output = vgg_model(vgg_content_input)
-y_content = mask_data(vgg_model(vgg_content_input), content_layers_mask)
-print(y_content)
+style_layers_mask = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_2']
+content_layers_mask = ['conv_3_2']
 
 print('Building full model')
-preprocessed_output = st_model.output - mean # th, BGR ordering, sub mean
+mean = load_mean(name='vgg19', dim_ordering='th') # th ordering, BGR
+preprocessed_output = Lambda(lambda x: x - mean)(st_model.output) # th, BGR ordering, sub mean
 preds = vgg_model(preprocessed_output)
 style_preds = mask_data(preds, style_layers_mask)
+
+def lambda_forward(x):
+    return grams(x)
+def lambda_get_output_shape(input_shape):
+    return (input_shape[0], input_shape[1], input_shape[1])
+grams_layer = Lambda(lambda_forward, lambda_get_output_shape)
+
+style_preds = [grams_layer(style_pred) for style_pred in style_preds]
 content_preds = mask_data(preds, content_layers_mask)
+full_model = Model(input=[st_model.input], output=content_preds + style_preds + [preprocessed_output])
 
-print('Preparing training loss functions')
-train_loss_styles = []
-for idx, y_style in enumerate(y_styles):
-    train_loss_styles.append(
-        frobenius_error(
-            y_style, 
-            grams(style_preds[idx])
-        )
-    )
-
-train_loss_contents = []
-for idx, y_content in enumerate(y_content):
-    train_loss_contents.append(
-        frobenius_error(y_content, content_preds[idx])
-    )
-
-reg_TV = total_variation_error(preprocessed_output, 2)
-
-layer_weights = json.load(open(dataDir + '/output/vgg19/reconstruction/layer_weights.json', 'r'))
+samples_per_epoch = len(get_image_list(trainDir))
+generator = generate_data_from_image_list(trainDir, (height, width), paintingsDir + '/results/' + args.style.split('/')[-1].split('.')[0])
 
 print('Iterating over hyper parameters')
 current_iter = 0
-for alpha in [1e1]:
+for alpha in [2e2]:
     for beta in [1.]:
-        for gamma in [5e-07]:
+        for gamma in [1e-4]:
             print("alpha, beta, gamma:", alpha, beta, gamma)
 
             gc.collect()
-        
+            
             st_model.set_weights(init_weights)
-            print('Compiling train loss')
-            tls = [alpha * train_loss_style / layer_weights[style_layers[style_idx]]['style']['min'] for style_idx, train_loss_style in enumerate(train_loss_styles)]
-            tlc = [beta * len(tls) * train_loss_content / layer_weights[content_layers[content_idx]]['content']['min'] for content_idx, train_loss_content in enumerate(train_loss_contents)]
-            rtv = gamma * reg_TV
-            train_loss =  sum(tls) + sum(tlc) + rtv
 
-            print('Compiling Adam update')
+            print('Compiling model')
             adam = Adam(lr=1e-03)
-            updates = st_model.updates + adam.get_updates(collect_trainable_weights(st_model), st_model.constraints, train_loss)
-
-            print('Compiling train function')
-            inputs = [st_model.input, K.learning_phase()]
-            outputs = [train_loss] + tlc + tls + [rtv] # Array concatenation
-            train_iteratee = K.function(inputs, outputs, updates=updates)
-
-            print('Starting training')
-            weights, losses = train_weights(
-                trainDir,
-                # overfitDir, 
-                (height, width),
-                st_model, 
-                train_iteratee, 
-                max_iter=args.max_iter,
-                batch_size=batch_size
+            full_model.compile(optimizer=adam,
+                loss=[
+                    # content
+                    'mse',
+                    # style
+                    'mse',
+                    'mse',
+                    'mse',
+                    'mse',
+                    # ltv
+                    total_variation_error_keras
+                ],
+              loss_weights=[
+                    # content
+                    beta,
+                    # style
+                    alpha / len(style_preds),
+                    alpha / len(style_preds),
+                    alpha / len(style_preds),
+                    alpha / len(style_preds),
+                    # ltv
+                    gamma
+                ]
             )
 
-            best_weights = weights[0]
-            last_weights = weights[1]
+            print('Training model')
+            history = st_model.fit_generator(generator, samples_per_epoch=samples_per_epoch, batch_size=args.batch_size, nb_epoch=args.nb_epoch, verbose=1)
+            losses = history.history
 
             print("Saving final data")
             prefixedDir = resultsDir + '/' + str(int(time.time()))
-            export_model(st_model, prefixedDir, best_weights)
+            export_model(st_model, prefixedDir)
             with open(prefixedDir + '/losses.json', 'w') as outfile:
                 json.dump(losses, outfile)  
             plot_losses(losses, prefixedDir)

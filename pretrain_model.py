@@ -4,7 +4,7 @@ from keras import backend as K
 from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
-from models.style_transfer import style_transfer_conv_transpose
+from models.style_transfer import style_transfer_conv_transpose, style_transfer_conv_inception_3
 
 from utils.imutils import plot_losses, load_images, load_data
 from utils.lossutils import (frobenius_error)
@@ -50,7 +50,7 @@ else:
     raise Exception('training_mode unknown: %s' % args.training_mode)
 
 
-st_model = style_transfer_conv_transpose(input_shape=input_shape, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+st_model = style_transfer_conv_inception_3(input_shape=input_shape, nb_res_layer=args.nb_res_layer) # th ordering, BGR
 if os.path.isfile(args.weights): 
     print("Loading weights")
     st_model.load_weights(args.weights)

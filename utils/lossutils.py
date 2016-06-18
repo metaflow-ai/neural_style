@@ -79,6 +79,9 @@ def total_variation_error(y, beta=1):
 
     return loss
 
+def total_variation_error_keras(y, y_fake):
+    return total_variation_error(y, 2)
+    
 ##########
 # Training
 ##########
