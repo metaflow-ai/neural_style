@@ -138,7 +138,7 @@ def generate_data_from_image_list(image_folder, size, style_fullpath_pefix, vgg_
                 im = np.array([load_image_st(fullpath, size, verbose)])
             else:
                 im = np.array([load_image(fullpath, size, dim_ordering, verbose)])
+            y_content = predict_content([im])[0]
             
-            y_content = predict_content([im])
+            yield ([im], [y_content, y_style1, y_style2, y_style3, y_style4, np.zeros_like(im)])
             
-            yield ([im], [y_content, y_style1, y_style2, y_style3, y_style4, np.zeros(im)])

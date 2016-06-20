@@ -18,7 +18,7 @@ from utils.general import export_model
 
 # inputs th ordering, BGR
 def style_transfer_conv_transpose(weights_path=None, mode=0, input_shape=(3, 600, 600), nb_res_layer=6):
-    input = Input(shape=input_shape, name='input', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype='float32')
 
     # Downsampling
     c11 = Convolution2D(32, 9, 9, 
@@ -60,7 +60,7 @@ def style_transfer_conv_transpose(weights_path=None, mode=0, input_shape=(3, 600
 
     c91 = ConvolutionTranspose2D(3, 9, 9, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a81)
-    out = ScaledSigmoid(scaling=255.)(c91)    
+    out = ScaledSigmoid(scaling=255., name="output_node")(c91)    
 
     
     model = Model(input=[input], output=[out])
@@ -72,7 +72,7 @@ def style_transfer_conv_transpose(weights_path=None, mode=0, input_shape=(3, 600
 
 # Moving from 6 to 12 layers doesn't seem to improve much
 def style_transfer_conv_inception(weights_path=None, mode=0, input_shape=(3, 600, 600), nb_res_layer=6):
-    input = Input(shape=input_shape, name='input', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype='float32')
 
     # Downsampling
     c = Convolution2D(13, 3, 3, 
@@ -129,7 +129,7 @@ def style_transfer_conv_inception(weights_path=None, mode=0, input_shape=(3, 600
 
     c = Convolution2D(3, 3, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a81)
-    out = ScaledSigmoid(scaling=255.)(c)
+    out = ScaledSigmoid(scaling=255., name="output_node")(c)
 
     model = Model(input=[input], output=[out])
 
@@ -140,7 +140,7 @@ def style_transfer_conv_inception(weights_path=None, mode=0, input_shape=(3, 600
 
 # Good direction !
 def style_transfer_conv_inception_2(weights_path=None, mode=0, input_shape=(3, 600, 600), nb_res_layer=6):
-    input = Input(shape=input_shape, name='input', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype='float32')
 
     # Downsampling
     c = Convolution2D(13, 3, 3, 
@@ -195,7 +195,7 @@ def style_transfer_conv_inception_2(weights_path=None, mode=0, input_shape=(3, 6
 
     c = Convolution2D(3, 3, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(bn81)
-    out = ScaledSigmoid(scaling=255.)(c)
+    out = ScaledSigmoid(scaling=255., name="output_node")(c)
 
     model = Model(input=[input], output=[out])
 
@@ -206,7 +206,7 @@ def style_transfer_conv_inception_2(weights_path=None, mode=0, input_shape=(3, 6
 
 # Less capacity than the inception "en serie"
 def style_transfer_conv_inception_2_parallel(weights_path=None, mode=0, input_shape=(3, 600, 600), nb_res_layer=6):
-    input = Input(shape=input_shape, name='input', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype='float32')
 
     # Downsampling
     c = Convolution2D(13, 3, 3, 
@@ -263,7 +263,7 @@ def style_transfer_conv_inception_2_parallel(weights_path=None, mode=0, input_sh
 
     c = Convolution2D(3, 3, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(bn81)
-    out = ScaledSigmoid(scaling=255.)(c)
+    out = ScaledSigmoid(scaling=255., name="output_node")(c)
 
     model = Model(input=[input], output=[out])
 
@@ -273,7 +273,7 @@ def style_transfer_conv_inception_2_parallel(weights_path=None, mode=0, input_sh
     return model
 
 def style_transfer_conv_inception_3(weights_path=None, mode=0, input_shape=(3, 600, 600), nb_res_layer=6):
-    input = Input(shape=input_shape, name='input', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype='float32')
 
     # Downsampling
     c = Convolution2D(13, 3, 3, 
@@ -320,7 +320,7 @@ def style_transfer_conv_inception_3(weights_path=None, mode=0, input_shape=(3, 6
 
     ct = ConvolutionTranspose2D(3, 5, 5, 
         init='he_normal', subsample=(4, 4), border_mode='same', activation='linear')(last_out)
-    out = ScaledSigmoid(scaling=255.)(ct)
+    out = ScaledSigmoid(scaling=255., name="output_node")(ct)
 
     model = Model(input=[input], output=[out])
 
@@ -331,7 +331,7 @@ def style_transfer_conv_inception_3(weights_path=None, mode=0, input_shape=(3, 6
 
 # Doesn't give beter result
 def style_transfer_conv_inception_ELU_flattened(weights_path=None, mode=0, input_shape=(3, 600, 600), nb_res_layer=6):
-    input = Input(shape=input_shape, name='input', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype='float32')
 
     # Downsampling
     c_hori = Convolution2D(13, 1, 9, 
@@ -405,7 +405,7 @@ def style_transfer_conv_inception_ELU_flattened(weights_path=None, mode=0, input
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(c)
     out = Convolution2D(3, 1, 3, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(c)
-    out = ScaledSigmoid(scaling=255.)(out)
+    out = ScaledSigmoid(scaling=255., name="output_node")(out)
 
     model = Model(input=[input], output=[out])
 
