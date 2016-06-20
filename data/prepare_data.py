@@ -24,8 +24,8 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument('--style_folder', default=dataDir + '/paintings', type=str, help='Style folder')
-parser.add_argument('--content_folder', default=dataDir + '/train', type=str, help='Content folder')
-parser.add_argument('--pooling_type', default='max', type=str, choices=['max', 'avg'], help='VGG pooling type.')
+parser.add_argument('--content_folder', default='', type=str, help='Content folder')
+parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
 args = parser.parse_args()
 
@@ -70,6 +70,7 @@ if 'results_style_dir' in locals():
                 hf.create_dataset(style_layer, data=results[idx])
 
 if 'results_content_dir' in locals():
+    print('be carefull, every file dumped is taking 22mb, check you have enough space')
     image_list = get_image_list(args.content_folder)
     for image_path in image_list:
         X_train_content = np.array([load_image(image_path, size=(height, width), dim_ordering='th', verbose=True)])
@@ -80,7 +81,4 @@ if 'results_content_dir' in locals():
         with h5py.File(output_filename, 'w') as hf:
             for idx, content_layer in enumerate(content_layers):
                 hf.create_dataset(content_layer, data=results[idx])
-
-
-
 

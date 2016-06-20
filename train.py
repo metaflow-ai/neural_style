@@ -77,7 +77,8 @@ content_preds = mask_data(preds, content_layers_mask)
 full_model = Model(input=[st_model.input], output=content_preds + style_preds + [preprocessed_output])
 
 samples_per_epoch = len(get_image_list(trainDir))
-generator = generate_data_from_image_list(trainDir, (height, width), paintingsDir + '/results/' + args.style.split('/')[-1].split('.')[0])
+style_fullpath_pefix = paintingsDir + '/results/' + args.style.split('/')[-1].split('.')[0]
+generator = generate_data_from_image_list(trainDir, (height, width), style_fullpath_pefix, vgg_model)
 
 print('Iterating over hyper parameters')
 current_iter = 0

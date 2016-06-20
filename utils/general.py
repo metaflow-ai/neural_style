@@ -1,14 +1,21 @@
-import h5py, os
+import h5py, os, sys
 import numpy as np
+
+dir = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(dir + '/../..')
 
 from keras import backend as K
 if K._BACKEND == 'tensorflow':
     import tensorflow as tf
+    import freeze_graph
+    
 from keras.models import model_from_json
 from keras.utils.np_utils import convert_kernel
+from vgg19.model_headless import get_layer_data
 
 from imutils import load_image, load_image_st, get_image_list
-import freeze_graph
+
+dir = os.path.dirname(os.path.realpath(__file__))
 
 # You don't need any input layer in a sequential model which usually end up 
 # with a model minus that one input layer
@@ -112,22 +119,26 @@ def import_model(absolute_model_dir, best=True, should_convert=False, custom_obj
 def mask_data(data, selector):
     return [d for d, s in zip(data, selector) if s]
 
-def generate_data_from_image_list(image_folder, size, style_fullpath_pefix, dim_ordering='tf', verbose=False, st=False):
+def generate_data_from_image_list(image_folder, size, style_fullpath_pefix, vgg_model, dim_ordering='tf', verbose=False, st=False):
     image_list = get_image_list(image_folder)
     file = h5py.File(style_fullpath_pefix + '_' + str(size[0]) + '.hdf5', 'r')
     y_style1 = np.array(file.get('conv_1_2'))
     y_style2 = np.array(file.get('conv_2_2'))
     y_style3 = np.array(file.get('conv_3_4'))
     y_style4 = np.array(file.get('conv_4_2'))
+
+
+    layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
+    content_layers = ['conv_3_2']
+    content_output_layers = [layer_dict[lc_name].output for lc_name in content_layers]
+    predict_content = K.function([vgg_model.input], content_output_layers)
     while 1:
         for fullpath in image_list:
             if st:
-                im = load_image_st(fullpath, size, verbose)
+                im = np.array([load_image_st(fullpath, size, verbose)])
             else:
-                im = load_image(fullpath, size, dim_ordering, verbose)
-            hdf5_filepath = fullpath.split('/')
-            filename = hdf5_filepath.pop().split('.')[0]
-            hdf5_filepath = '/'.join(hdf5_filepath) + '/results/' + filename + '_' + str(size[0]) + '.hdf5'
-            y_content = np.array(h5py.File(hdf5_filepath, 'r').get('conv_3_2'))
+                im = np.array([load_image(fullpath, size, dim_ordering, verbose)])
+            
+            y_content = predict_content([im])
             
             yield ([im], [y_content, y_style1, y_style2, y_style3, y_style4, np.zeros(im)])
