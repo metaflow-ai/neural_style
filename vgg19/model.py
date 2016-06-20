@@ -71,4 +71,3 @@ def VGG_19_mean(dim_ordering='tf'):
     else:
         raise Exception('Invalid dim_ordering: ' + dim_ordering)
     
-    return mean

@@ -78,7 +78,7 @@ def export_model(model, absolute_model_dir, best_weights=None):
         output_node_names = model.output.name.split(':')[0]
         restore_op_name = "save/restore_all"
         filename_tensor_name = "save/Const:0"
-        output_graph_path = absolute_model_dir + "tf-frozen_model.pb"
+        output_graph_path = absolute_model_dir + "/tf-frozen_model.pb"
         clear_devices = True
 
         freeze_graph.freeze_graph(input_graph_path, input_saver_def_path,
