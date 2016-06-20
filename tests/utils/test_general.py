@@ -40,10 +40,12 @@ class TestImUtils(unittest.TestCase):
 
     def test_import_model(self):
         data_model_folder = dir + "/../fixture/model_conv2d_relu"
-        model = import_model(data_model_folder)
+
+        should_convert = K._BACKEND == "theano"
+        model = import_model(data_model_folder, should_convert=should_convert)
         input_img = np.array([load_image_st(dir + '/../fixture/blue.png', size=None, verbose=False)])
 
-        # Theano flips kernel ... This is why this test is failing in theano
+        
 
         output = model.predict([input_img]).astype('int32')
         true_output = np.array([

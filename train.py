@@ -46,7 +46,7 @@ input_shape = (channels, width, height)
 batch_size = args.batch_size
 
 print('Loading style_transfer model')
-st_model = style_transfer_conv_inception_3(input_shape=input_shape, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+st_model = style_transfer_conv_inception_3(mode=2, input_shape=input_shape, nb_res_layer=args.nb_res_layer) # th ordering, BGR
 if os.path.isfile(args.weights): 
     print("Loading weights")
     st_model.load_weights(args.weights)
@@ -104,7 +104,7 @@ for alpha in [2e2]:
                     # ltv
                     total_variation_error_keras
                 ],
-              loss_weights=[
+                loss_weights=[
                     # content
                     beta,
                     # style
@@ -118,7 +118,12 @@ for alpha in [2e2]:
             )
 
             print('Training model')
-            history = st_model.fit_generator(generator, samples_per_epoch=samples_per_epoch, batch_size=args.batch_size, nb_epoch=args.nb_epoch, verbose=1)
+            history = full_model.fit_generator(generator, 
+                samples_per_epoch=samples_per_epoch, 
+                max_q_size=args.batch_size, 
+                nb_epoch=args.nb_epoch, 
+                verbose=1
+            )
             losses = history.history
 
             print("Saving final data")

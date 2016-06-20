@@ -5,8 +5,10 @@ from keras import backend as K
 if K._BACKEND == 'tensorflow':
     import tensorflow as tf
 from keras.models import model_from_json
+from keras.utils.np_utils import convert_kernel
 
 from imutils import load_image, load_image_st, get_image_list
+import freeze_graph
 
 # You don't need any input layer in a sequential model which usually end up 
 # with a model minus that one input layer
@@ -59,8 +61,27 @@ def export_model(model, absolute_model_dir, best_weights=None):
         graph_def = sess.graph.as_graph_def()
         tf.train.write_graph(graph_def, absolute_model_dir, 'tf-model_graph')
 
+        input_graph_path = absolute_model_dir + '/tf-model_graph'
+        input_saver_def_path = ""
+        input_binary = False
+        if best_weights != None:
+            input_checkpoint_path = absolute_model_dir + '/tf-best_weights'
+        else:
+            input_checkpoint_path = absolute_model_dir + '/tf-last_weights'
+        output_node_names = model.output.name.split(':')[0]
+        restore_op_name = "save/restore_all"
+        filename_tensor_name = "save/Const:0"
+        output_graph_path = absolute_model_dir + "tf-frozen_model.pb"
+        clear_devices = True
 
-def import_model(absolute_model_dir, best=True, custom_objects={}):
+        freeze_graph.freeze_graph(input_graph_path, input_saver_def_path,
+                                  input_binary, input_checkpoint_path,
+                                  output_node_names, restore_op_name,
+                                  filename_tensor_name, output_graph_path,
+                                  clear_devices, "", verbose=False)
+
+
+def import_model(absolute_model_dir, best=True, should_convert=False, custom_objects={}):
     archi_json = open(absolute_model_dir + '/archi.json').read()
     model = model_from_json(archi_json, custom_objects)
 
@@ -68,6 +89,23 @@ def import_model(absolute_model_dir, best=True, custom_objects={}):
         model.load_weights(absolute_model_dir + '/best_weights.hdf5')
     else:
         model.load_weights(absolute_model_dir + '/last_weights.hdf5')
+
+    if should_convert == True:
+        if K._BACKEND == 'tensorflow':
+            ops = []
+            for layer in model.layers:
+               if layer.__class__.__name__ in ['Convolution1D', 'Convolution2D']:
+                  original_w = K.get_value(layer.W)
+                  converted_w = convert_kernel(original_w)
+                  ops.append(tf.assign(layer.W, converted_w).op)
+            K.get_session().run(ops)
+        else:
+            for layer in model.layers:
+               if layer.__class__.__name__ in ['Convolution1D', 'Convolution2D']:
+                  original_w = K.get_value(layer.W)
+                  converted_w = convert_kernel(original_w)
+                  K.set_value(layer.W, converted_w)
+
 
     return model
 
