@@ -1,5 +1,5 @@
 import os, sys, unittest
-import theano 
+ 
 dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/../..')
 
