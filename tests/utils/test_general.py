@@ -27,7 +27,12 @@ class TestImUtils(unittest.TestCase):
         model = Model(input=[input], output=[out])
 
         data_model_folder = dir + "/../fixture/model_export"
-        export_model(model, data_model_folder)
+        if K._BACKEND == 'tensorflow':
+            import tensorflow as tf
+            saver = tf.train.Saver()
+        else:
+            saver = None
+        export_model(model, data_model_folder, saver=saver)
 
         os.remove(data_model_folder + '/archi.json')
         os.remove(data_model_folder + '/last_weights.hdf5')
@@ -36,6 +41,7 @@ class TestImUtils(unittest.TestCase):
             os.remove(data_model_folder + '/tf-last_weights')
             os.remove(data_model_folder + '/tf-last_weights.meta')
             os.remove(data_model_folder + '/tf-model_graph')
+            os.remove(data_model_folder + '/tf-frozen_model.pb')
         os.rmdir(data_model_folder)
 
     def test_import_model(self):

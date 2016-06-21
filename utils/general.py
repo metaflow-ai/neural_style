@@ -7,7 +7,7 @@ sys.path.append(dir + '/../..')
 from keras import backend as K
 if K._BACKEND == 'tensorflow':
     import tensorflow as tf
-    import freeze_graph
+    import freeze_graph as freeze_tools
     
 from keras.models import model_from_json
 from keras.utils.np_utils import convert_kernel
@@ -45,48 +45,49 @@ def copySeqWeights(model, weightsFullPath, outputFilename, offset=1, limit=-1):
 
     model.save_weights(outputFilename, overwrite=True)
 
-def export_model(model, absolute_model_dir, best_weights=None):
+def export_model(model, absolute_model_dir, best_weights=None, saver=None, global_step=None):
     if not os.path.isdir(absolute_model_dir): 
         os.makedirs(absolute_model_dir)
 
     model.save_weights(absolute_model_dir + "/last_weights.hdf5", overwrite=True)
-    if K._BACKEND == 'tensorflow':
+    if K._BACKEND == 'tensorflow' and saver != None:
         sess = K.get_session()
-        saver = tf.train.Saver(var_list=None)
-        saver.save(sess, absolute_model_dir + '/tf-last_weights', global_step=None)
+        saver.save(sess, absolute_model_dir + '/tf-last_weights', global_step=global_step)
 
     if best_weights != None:
         model.set_weights(best_weights)
         model.save_weights(absolute_model_dir + "/best_weights.hdf5", overwrite=True)
-        if K._BACKEND == 'tensorflow':
-            saver = tf.train.Saver(var_list=None)
-            saver.save(sess, absolute_model_dir + '/tf-best_weights', global_step=None)
+        if K._BACKEND == 'tensorflow' and saver != None:
+            saver.save(sess, absolute_model_dir + '/tf-best_weights', global_step=global_step)
 
     # Graph
-    open(absolute_model_dir + "/archi.json", 'w').write(model.to_json())
-    if K._BACKEND == 'tensorflow':
+    json = model.to_json()
+    open(absolute_model_dir + "/archi.json", 'w').write(json)
+    if K._BACKEND == 'tensorflow' and saver != None and global_step == None:
         graph_def = sess.graph.as_graph_def()
         tf.train.write_graph(graph_def, absolute_model_dir, 'tf-model_graph')
 
-        input_graph_path = absolute_model_dir + '/tf-model_graph'
-        input_saver_def_path = ""
-        input_binary = False
-        if best_weights != None:
-            input_checkpoint_path = absolute_model_dir + '/tf-best_weights'
-        else:
-            input_checkpoint_path = absolute_model_dir + '/tf-last_weights'
-        output_node_names = model.output.name.split(':')[0]
-        restore_op_name = "save/restore_all"
-        filename_tensor_name = "save/Const:0"
-        output_graph_path = absolute_model_dir + "/tf-frozen_model.pb"
-        clear_devices = True
+        freeze_graph(model, absolute_model_dir, best_weights)
 
-        freeze_graph.freeze_graph(input_graph_path, input_saver_def_path,
-                                  input_binary, input_checkpoint_path,
-                                  output_node_names, restore_op_name,
-                                  filename_tensor_name, output_graph_path,
-                                  clear_devices, "", verbose=False)
+def freeze_graph(model, absolute_model_dir, best_weights=None):
+    input_graph_path = absolute_model_dir + '/tf-model_graph'
+    input_saver_def_path = ""
+    input_binary = False
+    if best_weights != None:
+        input_checkpoint_path = absolute_model_dir + '/tf-best_weights'
+    else:
+        input_checkpoint_path = absolute_model_dir + '/tf-last_weights'
+    output_node_names = model.output.name.split(':')[0]
+    restore_op_name = "save/restore_all"
+    filename_tensor_name = "save/Const:0"
+    output_graph_path = absolute_model_dir + "/tf-frozen_model.pb"
+    clear_devices = True
 
+    freeze_tools.freeze_graph(input_graph_path, input_saver_def_path,
+                              input_binary, input_checkpoint_path,
+                              output_node_names, restore_op_name,
+                              filename_tensor_name, output_graph_path,
+                              clear_devices, "", verbose=False)
 
 def import_model(absolute_model_dir, best=True, should_convert=False, custom_objects={}):
     archi_json = open(absolute_model_dir + '/archi.json').read()
@@ -119,26 +120,24 @@ def import_model(absolute_model_dir, best=True, should_convert=False, custom_obj
 def mask_data(data, selector):
     return [d for d, s in zip(data, selector) if s]
 
-def generate_data_from_image_list(image_folder, size, style_fullpath_pefix, vgg_model, dim_ordering='tf', verbose=False, st=False):
-    image_list = get_image_list(image_folder)
+def generate_data_from_image_list(image_list, size, style_fullpath_pefix, transform_f=None, dim_ordering='tf', verbose=False, st=False):
     file = h5py.File(style_fullpath_pefix + '_' + str(size[0]) + '.hdf5', 'r')
     y_style1 = np.array(file.get('conv_1_2'))
     y_style2 = np.array(file.get('conv_2_2'))
     y_style3 = np.array(file.get('conv_3_4'))
     y_style4 = np.array(file.get('conv_4_2'))
 
-
-    layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
-    content_layers = ['conv_3_2']
-    content_output_layers = [layer_dict[lc_name].output for lc_name in content_layers]
-    predict_content = K.function([vgg_model.input], content_output_layers)
     while 1:
         for fullpath in image_list:
             if st:
                 im = np.array([load_image_st(fullpath, size, verbose)])
             else:
                 im = np.array([load_image(fullpath, size, dim_ordering, verbose)])
-            y_content = predict_content([im])[0]
+            if transform_f != None:
+                y_content = transform_f([im])[0]
+                yield ([im], [y_content, y_style1, y_style2, y_style3, y_style4, np.zeros_like(im)])
+            else:
+                y_content = im
+                yield ([im], [y_content])
             
-            yield ([im], [y_content, y_style1, y_style2, y_style3, y_style4, np.zeros_like(im)])
             

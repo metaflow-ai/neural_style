@@ -230,7 +230,7 @@ def dump_as_hdf5(fullpath, data):
 
 def plot_losses(losses, dir='', prefix='', suffix=''):
     plt.clf()
-    if len(losses['val_loss']):
+    if 'val_loss' in losses and len(losses['val_loss']):
         plt.subplot(2, 1, 1)
         plt.plot(losses['loss'])
         plt.title('Training loss')
