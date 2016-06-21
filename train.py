@@ -17,6 +17,7 @@ from utils.lossutils import (grams, frobenius_error,
 from utils.general import export_model, mask_data, generate_data_from_image_list
 from utils.callbacks import TensorBoardBatch, ModelCheckpointBatch, HistoryBatch
 
+
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
 dataDir = dir + '/data'
@@ -42,11 +43,15 @@ parser.add_argument('--nb_epoch', default=2, type=int, help='Number of epoch.')
 parser.add_argument('--nb_res_layer', default=6, type=int, help='Number of residual layers in the style transfer model.')
 args = parser.parse_args()
 
+dim_ordering = K.image_dim_ordering()
 channels = 3
 width = args.image_size
 height = args.image_size
 size = (height, width)
-input_shape = (channels, width, height)
+if dim_ordering == 'th':
+    input_shape = (channels, width, height)
+else:
+    input_shape = (width, height, channels)
 batch_size = args.batch_size
 
 print('Loading style_transfer model')
@@ -65,7 +70,7 @@ content_layers = ['conv_3_2']
 content_layers_mask = [name in content_layers for name in layers_names]
 
 print('Building full model')
-mean = load_mean(name='vgg19', dim_ordering='th') # th ordering, BGR
+mean = load_mean(name='vgg19', dim_ordering=dim_ordering) # th ordering, BGR
 preprocessed_output = Lambda(lambda x: x - mean, name="ltv")(st_model.output) # th, BGR ordering, sub mean
 preds = vgg_model(preprocessed_output)
 style_preds = mask_data(preds, style_layers_mask)
@@ -88,7 +93,7 @@ train_image_list = get_image_list(train_dir)
 train_samples_per_epoch = len(train_image_list)
 train_generator = generate_data_from_image_list(
     train_image_list, (height, width), style_fullpath_prefix, true_content_f,
-    dim_ordering='th', verbose=False, st=True
+    dim_ordering=dim_ordering, verbose=False, st=True
 )
 val_image_list = get_image_list(val_dir)
 if len(val_image_list) > 40:
@@ -96,7 +101,7 @@ if len(val_image_list) > 40:
 nb_val_samples = len(val_image_list)
 val_generator = generate_data_from_image_list(
     val_image_list, (height, width), style_fullpath_prefix, true_content_f,
-    dim_ordering='th', verbose=False, st=True
+    dim_ordering=dim_ordering, verbose=False, st=True
 )
 # Hack for the tensorboard
 st_model.validation_data = None
@@ -138,10 +143,10 @@ for alpha in [2e2]:
             callbacks = []
             if K._BACKEND == "tensorflow":
                 callbacks.append(
-                    TensorBoardBatch(st_model, log_dir=prefixed_dir + '/logs', histogram_freq=1)
+                    TensorBoardBatch(st_model, log_dir=prefixed_dir + '/logs', histogram_freq=200)
                 )
             callbacks.append(
-                ModelCheckpointBatch(st_model, chkp_dir=prefixed_dir + '/chkp', nb_step_chkp=1)
+                ModelCheckpointBatch(st_model, chkp_dir=prefixed_dir + '/chkp', nb_step_chkp=200)
             )
             callbacks.append(
                 HistoryBatch()
