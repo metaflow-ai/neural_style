@@ -32,7 +32,7 @@ width = args.image_size
 height = args.image_size
 input_shape = (channels, width, height)
 
-X_test = load_images(test_dir, limit=args.batch_size, size=(height, width), dim_ordering='th', verbose=True, st=True)
+X_test = load_images(test_dir, limit=args.batch_size, size=(height, width), verbose=True, st=True)
 print('X_test.shape: ' + str(X_test.shape))
 
 current_iter = 0
@@ -40,7 +40,7 @@ subdirs = [x[0] for x in os.walk(args.models_dir)]
 subdirs.pop(0) # First element is the parent dir
 for idx, absolute_model_dir in enumerate(subdirs):
     print('Loading model in %s' % absolute_model_dir)
-    st_model = import_model(absolute_model_dir, True, {
+    st_model = import_model(absolute_model_dir, best=True, should_convert=False, custom_objects={
         'ConvolutionTranspose2D': ConvolutionTranspose2D,
         'ScaledSigmoid': ScaledSigmoid
     })

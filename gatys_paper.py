@@ -11,6 +11,11 @@ from utils.lossutils import (frobenius_error, total_variation_error,
                             grams, norm_l2, train_input
                             )
 
+if K._BACKEND == "tensorflow":
+    K.set_image_dim_ordering('tf')
+else:
+    K.set_image_dim_ordering('th')
+
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
 dataDir = dir + '/data'
@@ -40,25 +45,30 @@ optimizer = 'adam'
 if optimizer == 'lbfgs':
     K.set_floatx('float64') # scipy needs float64 to use lbfgs
 
+dim_ordering = K.image_dim_ordering()
 channels = 3
 width = args.image_size
 height = args.image_size
-input_shape = (channels, width, height)
+size = (height, width)
+if dim_ordering == 'th':
+    input_shape = (channels, width, height)
+else:
+    input_shape = (width, height, channels)
 
 if os.path.isdir(args.content):
     print('dir: %s' % args.content)
     image_list = get_image_list(args.content)
 else:
     image_list = [args.content]
-X_train = load_images(image_list, size=(height, width), dim_ordering='th', verbose=True)
+X_train = load_images(image_list, size=(height, width), verbose=True)
 print("X_train shape:", X_train.shape)
 
-X_train_style = np.array([load_image(args.style, size=height, dim_ordering='th', verbose=True)])
+X_train_style = np.array([load_image(args.style, size=(height, width), verbose=True)])
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
-modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
-model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type=args.pooling_type)
+modelWeights = "%s/%s-%s-%s%s" % (vgg19Dir,'vgg-19', dim_ordering, K._BACKEND, '_headless_5_weights.hdf5')
+model = VGG_19_headless_5(input_shape, modelWeights, trainable=False, pooling_type=args.pooling_type)
 layer_dict, layers_names = get_layer_data(model, 'conv_')
 print('Layers found:' + ', '.join(layers_names))
 
@@ -114,7 +124,7 @@ print('Using optimizer: ' + optimizer)
 for file_idx in range(len(X_train)):
     print('Initializing input %s data' % args.input_type)
     if args.input_type == 'random':
-        input_data = create_noise_tensor(height, width, channels, 'th')
+        input_data = create_noise_tensor(height, width, channels)
     elif args.input_type == 'content':
         input_data = X_train[file_idx:file_idx+1, :, :, :].copy()
     else:
@@ -156,7 +166,7 @@ for file_idx in range(len(X_train)):
                         current_iter = obj['current_iter']
                         input_data = obj['input_data']
                         if current_iter % 25 == 0 and args.print_inter_img == True:
-                            save_image(output_dir + '/' + filename_array[0] + suffix + + '_' + str(current_iter.zfill(5)) + '.' + filename_array[1], deprocess(input_data[0], dim_ordering='th'))
+                            save_image(output_dir + '/' + filename_array[0] + suffix + + '_' + str(current_iter.zfill(5)) + '.' + filename_array[1], deprocess(input_data[0]))
 
                     best_input_data, losses = train_input(
                         input_data, 
@@ -168,7 +178,7 @@ for file_idx in range(len(X_train)):
                     )
 
                     print('Dumping data')
-                    save_image(output_dir + '/' + out_filename, deprocess(best_input_data[0], dim_ordering='th'))
+                    save_image(output_dir + '/' + out_filename, deprocess(best_input_data[0]))
                     if args.no_dump_losses == False:
                         plot_losses(losses, output_dir, filename_array[0], suffix)
 

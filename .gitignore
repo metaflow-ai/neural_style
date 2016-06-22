@@ -8,7 +8,7 @@ data/**/*.png
 data/**/*.hdf5
 data/output/*
 data/overfit*
-vgg19/vgg-19_*weights*
+vgg19/vgg-19*weights*
 models/data/**
 models/*.hdf5
 tmp/*

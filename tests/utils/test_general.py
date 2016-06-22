@@ -17,7 +17,7 @@ from utils.imutils import load_image_st
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
-class TestImUtils(unittest.TestCase):
+class TestGeneralUtils(unittest.TestCase):
 
     def test_export_model(self):
         input = Input(shape=(3, 4, 4), name='input', dtype='float32')

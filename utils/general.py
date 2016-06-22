@@ -29,7 +29,7 @@ def copySeqWeights(model, weightsFullPath, outputFilename, offset=1, limit=-1):
     print("Number of layers in the original weight: ", nbLayers)
     print("Number of layers in the model: ", len(model.layers))
     for k in range(nbLayers):
-        if k >= nbLayer - offset or (limit > 0 and k >= limit):
+        if k + offset >= nbLayer or (limit > 0 and k >= limit):
             break
         g = f['layer_{}'.format(k)]
         weights = [g.get('param_{}'.format(p))[()] for p in range(g.attrs['nb_params'])]
@@ -39,6 +39,8 @@ def copySeqWeights(model, weightsFullPath, outputFilename, offset=1, limit=-1):
                 # I have to do it for theano because theano flips the convolutional kernel
                 # and i don't have access to the API of the conv ops
                 weights[0] = np.round(weights[0][:, :, ::-1, ::-1], 4)
+            if K.image_dim_ordering() == 'tf':
+                weights[0] = np.transpose(weights[0], [2, 3, 1, 0])
             # print(weights[0].shape)
         model.layers[k+offset].set_weights(weights)
     f.close()
@@ -117,10 +119,21 @@ def import_model(absolute_model_dir, best=True, should_convert=False, custom_obj
 
     return model
 
+def get_shape(x):
+    if isinstance(x, (np.ndarray)):
+        return x.shape 
+    elif K._BACKEND == 'theano':
+        return K.shape(x)
+    else:
+        try:
+            return K.int_shape(x)
+        except Exception:
+            return K.shape(x)
+
 def mask_data(data, selector):
     return [d for d, s in zip(data, selector) if s]
 
-def generate_data_from_image_list(image_list, size, style_fullpath_pefix, transform_f=None, dim_ordering='tf', verbose=False, st=False):
+def generate_data_from_image_list(image_list, size, style_fullpath_pefix, transform_f=None, verbose=False, st=False):
     file = h5py.File(style_fullpath_pefix + '_' + str(size[0]) + '.hdf5', 'r')
     y_style1 = np.array(file.get('conv_1_2'))
     y_style2 = np.array(file.get('conv_2_2'))
@@ -132,7 +145,7 @@ def generate_data_from_image_list(image_list, size, style_fullpath_pefix, transf
             if st:
                 im = np.array([load_image_st(fullpath, size, verbose)])
             else:
-                im = np.array([load_image(fullpath, size, dim_ordering, verbose)])
+                im = np.array([load_image(fullpath, size, verbose)])
             if transform_f != None:
                 y_content = transform_f([im])[0]
                 yield ([im], [y_content, y_style1, y_style2, y_style3, y_style4, np.zeros_like(im)])

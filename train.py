@@ -8,15 +8,19 @@ from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
-from models.style_transfer import (style_transfer_conv_transpose
-                                , style_transfer_conv_inception_3)
+from models.style_transfer import (style_transfer_conv_inception_3)
 
 from utils.imutils import plot_losses, load_mean, get_image_list, load_images
-from utils.lossutils import (grams, frobenius_error, 
-                    train_weights, total_variation_error_keras)
-from utils.general import export_model, mask_data, generate_data_from_image_list
+from utils.lossutils import (grams, grams_output_shape, total_variation_error_keras)
+from utils.general import mask_data, generate_data_from_image_list, import_model, get_shape
 from utils.callbacks import TensorBoardBatch, ModelCheckpointBatch, HistoryBatch
+from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
+from models.layers.ScaledSigmoid import ScaledSigmoid
 
+if K._BACKEND == "tensorflow":
+    K.set_image_dim_ordering('tf')
+else:
+    K.set_image_dim_ordering('th')
 
 dir = os.path.dirname(os.path.realpath(__file__))
 vgg19Dir = dir + '/vgg19'
@@ -35,7 +39,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
-parser.add_argument('--weights', default='', type=str, help='Load pretrained weights')
+parser.add_argument('--model_dir', default='', type=str, help='Load pretrained model')
 parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
 parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
@@ -54,15 +58,19 @@ else:
     input_shape = (width, height, channels)
 batch_size = args.batch_size
 
-print('Loading style_transfer model')
-st_model = style_transfer_conv_inception_3(mode=2, input_shape=input_shape, nb_res_layer=args.nb_res_layer) # th ordering, BGR
-if os.path.isfile(args.weights): 
-    print("Loading weights")
-    st_model.load_weights(args.weights)
+if os.path.isdir(args.model_dir): 
+    print("Loading pretrained model in %s" % (args.model_dir))
+    st_model = import_model(args.model_dir, True, should_convert=False, custom_objects={
+        'ConvolutionTranspose2D': ConvolutionTranspose2D,
+        'ScaledSigmoid': ScaledSigmoid
+    })
+else:
+    print('Loading style_transfer model from scratch')
+    st_model = style_transfer_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
 
 print('Loading VGG headless 5')
-modelWeights = vgg19Dir + '/vgg-19_headless_5_weights.hdf5'
-vgg_model = VGG_19_headless_5(modelWeights, trainable=False, pooling_type=args.pooling_type, input_shape=input_shape)
+modelWeights = "%s/%s-%s-%s%s" % (vgg19Dir,'vgg-19', dim_ordering, K._BACKEND, '_headless_5_weights.hdf5')
+vgg_model = VGG_19_headless_5(input_shape, modelWeights, trainable=False, pooling_type=args.pooling_type)
 layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
 style_layers = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_2']
 style_layers_mask = [name in style_layers for name in layers_names]
@@ -70,11 +78,11 @@ content_layers = ['conv_3_2']
 content_layers_mask = [name in content_layers for name in layers_names]
 
 print('Building full model')
-mean = load_mean(name='vgg19', dim_ordering=dim_ordering) # th ordering, BGR
+mean = load_mean(name='vgg19') # th ordering, BGR
 preprocessed_output = Lambda(lambda x: x - mean, name="ltv")(st_model.output) # th, BGR ordering, sub mean
 preds = vgg_model(preprocessed_output)
 style_preds = mask_data(preds, style_layers_mask)
-style_preds = [Lambda(lambda x: grams(x), lambda shape: (shape[0], shape[1], shape[1]), name='style' + str(idx))(style_pred) for idx, style_pred in enumerate(style_preds)]
+style_preds = [Lambda(grams, grams_output_shape, name='style' + str(idx))(style_pred) for idx, style_pred in enumerate(style_preds)]
 content_preds = mask_data(preds, content_layers_mask)
 full_model = Model(input=[st_model.input], output=content_preds + style_preds + [preprocessed_output])
 
@@ -82,7 +90,7 @@ full_model = Model(input=[st_model.input], output=content_preds + style_preds + 
 # plot_model(vgg_model, to_file=results_dir + '/vgg_model.png', show_shapes=True)
 
 print('Loading the generator')
-tmp_vgg = VGG_19_headless_5(modelWeights, trainable=False, pooling_type=args.pooling_type, input_shape=input_shape)
+tmp_vgg = VGG_19_headless_5(input_shape, modelWeights, trainable=False, pooling_type=args.pooling_type)
 layer_dict, layers_names = get_layer_data(tmp_vgg, 'conv_')
 content_layers = ['conv_3_2']
 content_output_layers = [layer_dict[lc_name].output for lc_name in content_layers]
@@ -93,7 +101,7 @@ train_image_list = get_image_list(train_dir)
 train_samples_per_epoch = len(train_image_list)
 train_generator = generate_data_from_image_list(
     train_image_list, (height, width), style_fullpath_prefix, true_content_f,
-    dim_ordering=dim_ordering, verbose=False, st=True
+    verbose=False, st=True
 )
 val_image_list = get_image_list(val_dir)
 if len(val_image_list) > 40:
@@ -101,7 +109,7 @@ if len(val_image_list) > 40:
 nb_val_samples = len(val_image_list)
 val_generator = generate_data_from_image_list(
     val_image_list, (height, width), style_fullpath_prefix, true_content_f,
-    dim_ordering=dim_ordering, verbose=False, st=True
+    verbose=False, st=True
 )
 # Hack for the tensorboard
 st_model.validation_data = None
@@ -111,7 +119,7 @@ current_iter = 0
 for alpha in [2e2]:
     for beta in [1.]:
         for gamma in [1e-4]:
-            prefixed_dir = results_dir + '/' + str(int(time.time()))
+            prefixed_dir = "%s/%s-%s-%s" % (results_dir, str(int(time.time())), K._BACKEND, dim_ordering)
 
             print('Compiling model')
             adam = Adam(lr=1e-03)

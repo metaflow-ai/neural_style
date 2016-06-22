@@ -11,7 +11,7 @@ from utils.lossutils import *
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
-class TestImUtils(unittest.TestCase):
+class TestLossUtils(unittest.TestCase):
 
     def test_total_variation_error(self):
         # Prepare input
@@ -53,7 +53,10 @@ class TestImUtils(unittest.TestCase):
 
         self.assertEqual(True, (get_grads([input])==true_grad).all())
 
-    def test_grams(self):
+    def test_grams_th(self):
+        previous_image_dim_ordering = K.image_dim_ordering()
+        K.set_image_dim_ordering('th')
+
         input = np.zeros((1, 3, 4, 4))
         iter = 0
         for i in range(input.shape[1]):
@@ -73,8 +76,39 @@ class TestImUtils(unittest.TestCase):
         x = K.placeholder(input.shape, name='x')
         gram_mat = grams(x)
         get_grams = K.function([x], [gram_mat])        
+        K.set_image_dim_ordering(previous_image_dim_ordering)
 
-        self.assertEqual(True, (get_grams([input])[0]==true_grams).all())
+        pred_grams = get_grams([input])[0]
+        self.assertEqual(True, (pred_grams==true_grams).all())
+
+    def test_grams_tf(self):
+        previous_image_dim_ordering = K.image_dim_ordering()
+        K.set_image_dim_ordering('tf')
+
+        input = np.zeros((1, 3, 4, 4))
+        iter = 0
+        for i in range(input.shape[1]):
+            for j in range(input.shape[2]):
+                for k in range(input.shape[3]):
+                    input[0][i][j][k] = iter
+                    iter += 1
+        input = input.astype(K.floatx())
+        input = np.transpose(input, (0, 2, 3, 1))
+
+        true_grams = np.array([[
+                    [1240, 3160, 5080],
+                    [3160, 9176,15192],
+                    [5080,  15192,  25304]
+                ]]).astype(K.floatx())
+        true_grams /= input.shape[1] * input.shape[2] * input.shape[3]
+
+        x = K.placeholder(input.shape, name='x')
+        gram_mat = grams(x)
+        get_grams = K.function([x], [gram_mat])
+        K.set_image_dim_ordering(previous_image_dim_ordering)   
+
+        pred_grams = get_grams([input])[0]
+        self.assertEqual(True, (pred_grams==true_grams).all())
 
     def test_grams_loss(self):
         input = np.zeros((1, 3, 4, 4))

@@ -9,6 +9,7 @@ else:
     import tensorflow as tf
 
 from utils.imutils import load_image_st
+from utils.general import get_shape
 from utils.optimizers import adam
 from scipy.optimize import fmin_l_bfgs_b
 
@@ -17,20 +18,13 @@ gogh_inc_val = 0
 ########
 # Losses
 ########
-def grams(X, dim_ordering='th'):
-    if dim_ordering =='tf':
+def grams(X):
+    dim_ordering = K.image_dim_ordering()
+    if dim_ordering == 'tf':
         X = K.permute_dimensions(X, (0, 3, 1, 2))
 
-    if isinstance(X, (np.ndarray)):
-        samples, c, h, w = X.shape 
-    elif K._BACKEND == 'theano':
-        samples, c, h, w = K.shape(X)
-    else:
-        try:
-            samples, c, h, w = K.int_shape(X)
-        except Exception:
-            samples, c, h, w = K.shape(X)
-        
+    (samples, c, h, w) = get_shape(X)
+
     X_reshaped = K.reshape(X, (-1, c, h * w))
     X_T = K.permute_dimensions(X_reshaped, (0, 2, 1))
     if K._BACKEND == 'theano':
@@ -40,6 +34,13 @@ def grams(X, dim_ordering='th'):
     X_gram /= c * h * w
 
     return X_gram
+
+def grams_output_shape(input_shape):
+    dim_ordering = K.image_dim_ordering()
+    if dim_ordering == 'tf':
+        return (input_shape[0], input_shape[3], input_shape[3])
+    else:
+        return (input_shape[0], input_shape[1], input_shape[1])
 
 def frobenius_error(y_true, y_pred):
     loss = K.mean(K.square(y_pred - y_true))
@@ -92,7 +93,6 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
     best_input_data = None    
     if optimizerName == 'adam':    
         for i in range(max_iter):
-               
             data = train_iteratee([input_data])
             loss = data[0].item(0)
             grads_val = data[1]
@@ -123,6 +123,9 @@ def train_input(input_data, train_iteratee, optimizerName, config={}, max_iter=2
                 })
 
             input_data, config = adam(input_data, grads_val, config)
+            if K._BACKEND == 'tensorflow':
+                input_data = input_data[0]
+
     else:
         global gogh_inc_val
         gogh_inc_val = 0
