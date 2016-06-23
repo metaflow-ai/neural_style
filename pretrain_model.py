@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('--training_mode', default='identity', type=str, choices=['identity', 'overfit'], help='Load pretrained weights')
 parser.add_argument('--weights', default='', type=str, help='Load pretrained weights')
-parser.add_argument('--batch_size', default=8, type=int, help='batch size.')
+parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
 parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
 parser.add_argument('--nb_epoch', default=1000, type=int, help='Number of epoch.')
 parser.add_argument('--nb_res_layer', default=6, type=int, help='Number of residual layers in the style transfer model.')

@@ -11,6 +11,7 @@ from keras.layers.core import Activation
 from keras.layers import Input
 from keras.models import Model
 
+from models.layers.ATrousConvolution2D import ATrousConvolution2D
 from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
 from models.layers.ScaledSigmoid import ScaledSigmoid
 
@@ -349,6 +350,67 @@ def style_transfer_conv_inception_3(input_shape, weights_path=None, mode=0, nb_r
 
     return model
 
+def style_transfer_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=6):
+    if K.image_dim_ordering() == 'tf':
+        channel_axis = 3
+    else:
+        channel_axis = 1
+
+    input = Input(shape=input_shape, name='input_node', dtype='float32')
+    # Downsampling
+    c = Convolution2D(13, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(input)
+    bn11 = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
+    a11 = PReLU()(bn11) 
+    mp11 = MaxPooling2D(pool_size=(2, 2), dim_ordering=K.image_dim_ordering(), border_mode='same')(input)
+    m = merge([a11, mp11], mode='concat', concat_axis=channel_axis) # 16 layers
+
+    c12 = Convolution2D(48, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(2, 2),  border_mode='same', activation='linear')(m)
+    bn12 = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c12)
+    a12 = PReLU()(bn12)
+    mp12 = MaxPooling2D(pool_size=(2, 2), dim_ordering=K.image_dim_ordering(), border_mode='same')(m)
+    m = merge([a12, mp12], mode='concat', concat_axis=channel_axis) # 64 layers
+
+    c13 = ATrousConvolution2D(128, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', border_mode='same', activation='linear')(m)
+    bn13 = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c13)
+    last_out = PReLU()(bn13)
+
+    for i in range(nb_res_layer):
+        #bottleneck archi
+        c = Convolution2D(32, 1, 1, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(last_out)
+        bn = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
+        a = PReLU()(bn)
+
+        # Convolutions
+        c = ATrousConvolution2D(32, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', border_mode='same', activation='linear')(a)
+        bn = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
+        a = PReLU()(bn)
+        c = ATrousConvolution2D(32, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', border_mode='same', activation='linear')(a)
+        bn = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
+        a = Activation('relu')(bn)
+
+        #Reverse bottleneck
+        c = Convolution2D(128, 1, 1, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a)
+        bn = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
+        last_out = merge([last_out, bn], mode='sum')
+
+    ct = ConvolutionTranspose2D(3, 5, 5, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(4, 4), border_mode='same', activation='linear')(last_out)
+    out = ScaledSigmoid(scaling=255., name="output_node")(ct)
+
+    model = Model(input=[input], output=[out])
+
+    if weights_path:
+        model.load_weights(weights_path)
+
+    return model
+
 # Doesn't give beter result
 def style_transfer_conv_inception_ELU_flattened(input_shape, weights_path=None, mode=0, nb_res_layer=6):
     if K.image_dim_ordering() == 'tf':
@@ -442,33 +504,43 @@ def style_transfer_conv_inception_ELU_flattened(input_shape, weights_path=None, 
 if __name__ == "__main__":
     from keras.utils.visualize_util import plot as plot_model
 
+    if K.image_dim_ordering() == 'th':
+        input_shape = (3, 256, 256)
+    else:
+        input_shape = (256, 256, 3)
+
     dir = os.path.dirname(os.path.realpath(__file__))
-    resultsDir = dir + '/data/st'
+    results_dir = dir + '/data/st'
 
-    # model = style_transfer_conv_transpose()
-    # export_model(model, resultsDir + '/style_transfer_conv_transpose')
-    # plot_model(model, resultsDir + '/style_transfer_conv_transpose/model.png', True)
 
-    # model = style_transfer_conv_inception()
-    # export_model(model, resultsDir + '/style_transfer_conv_inception')
-    # plot_model(model, resultsDir + '/style_transfer_conv_inception/model.png', True)
+    # model = style_transfer_conv_transpose(input_shape=input_shape)
+    # export_model(model, results_dir + '/style_transfer_conv_transpose')
+    # plot_model(model, results_dir + '/style_transfer_conv_transpose/model.png', True)
 
-    # model = style_transfer_conv_inception_2()
-    # export_model(model, resultsDir + '/style_transfer_conv_inception_2')
-    # plot_model(model, resultsDir + '/style_transfer_conv_inception_2/model.png', True)
+    # model = style_transfer_conv_inception(input_shape=input_shape)
+    # export_model(model, results_dir + '/style_transfer_conv_inception')
+    # plot_model(model, results_dir + '/style_transfer_conv_inception/model.png', True)
 
-    # model = style_transfer_conv_inception_2_parallel()
-    # export_model(model, resultsDir + '/style_transfer_conv_inception_2_parallel')
-    # plot_model(model, resultsDir + '/style_transfer_conv_inception_2_parallel/model.png', True)
+    # model = style_transfer_conv_inception_2(input_shape=input_shape)
+    # export_model(model, results_dir + '/style_transfer_conv_inception_2')
+    # plot_model(model, results_dir + '/style_transfer_conv_inception_2/model.png', True)
 
-    model = style_transfer_conv_inception_3()
-    export_model(model, resultsDir + '/style_transfer_conv_inception_3')
-    plot_model(model, resultsDir + '/style_transfer_conv_inception_3/model.png', True)
+    # model = style_transfer_conv_inception_2_parallel(input_shape=input_shape)
+    # export_model(model, results_dir + '/style_transfer_conv_inception_2_parallel')
+    # plot_model(model, results_dir + '/style_transfer_conv_inception_2_parallel/model.png', True)
 
-    model = style_transfer_conv_inception_3(nb_res_layer=1)
-    export_model(model, resultsDir + '/style_transfer_conv_inception_3_1reslayer')
-    plot_model(model, resultsDir + '/style_transfer_conv_inception_3_1reslayer/model.png', True)
+    model = style_transfer_conv_inception_3(input_shape=input_shape)
+    export_model(model, results_dir + '/style_transfer_conv_inception_3')
+    plot_model(model, results_dir + '/style_transfer_conv_inception_3/model.png', True)
+
+    model = style_transfer_conv_inception_3(input_shape=input_shape, nb_res_layer=1)
+    export_model(model, results_dir + '/style_transfer_conv_inception_3_1reslayer')
+    plot_model(model, results_dir + '/style_transfer_conv_inception_3_1reslayer/model.png', True)
+
+    model = style_transfer_atrous_conv_inception(input_shape=input_shape)
+    export_model(model, results_dir + '/style_transfer_atrous_conv_inception')
+    plot_model(model, results_dir + '/style_transfer_atrous_conv_inception/model.png', True)
 
     # model = style_transfer_conv_inception_ELU_flattened()
-    # export_model(model, resultsDir + '/style_transfer_conv_inception_ELU_flattened')
-    # plot_model(model, resultsDir + '/style_transfer_conv_inception_ELU_flattened/model.png', True)
+    # export_model(model, results_dir + '/style_transfer_conv_inception_ELU_flattened')
+    # plot_model(model, results_dir + '/style_transfer_conv_inception_ELU_flattened/model.png', True)

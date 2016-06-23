@@ -7,8 +7,7 @@ from keras import backend as K
 from models.style_transfer import style_transfer_conv_transpose
 from utils.imutils import load_images, save_image_st
 from utils.general import import_model
-from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
-from models.layers.ScaledSigmoid import ScaledSigmoid
+from models.layers import custom_objects
 
 if K._BACKEND == "tensorflow":
     K.set_image_dim_ordering('tf')
@@ -50,10 +49,8 @@ subdirs = [x[0] for x in os.walk(args.models_dir)]
 subdirs.pop(0) # First element is the parent dir
 for absolute_model_dir in subdirs:    
     print('Loading model in %s' % absolute_model_dir)
-    st_model = import_model(absolute_model_dir, best=True, should_convert=False, custom_objects={
-        'ConvolutionTranspose2D': ConvolutionTranspose2D,
-        'ScaledSigmoid': ScaledSigmoid
-    })
+    st_model = import_model(absolute_model_dir, best=True, 
+                    should_convert=False, custom_objects=custom_objects)
 
     print('Predicting')
     results = st_model.predict(X_test) # Equivalent to predict([X_test, False])

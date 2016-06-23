@@ -9,8 +9,7 @@ from keras.utils.visualize_util import plot as plot_model
 
 from utils.imutils import load_images
 from utils.general import import_model
-from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
-from models.layers.ScaledSigmoid import ScaledSigmoid
+from models.layers import custom_objects
 
 dir = os.path.dirname(os.path.realpath(__file__)) + '/..'
 dataDir = dir + '/data'
@@ -40,10 +39,8 @@ subdirs = [x[0] for x in os.walk(args.models_dir)]
 subdirs.pop(0) # First element is the parent dir
 for idx, absolute_model_dir in enumerate(subdirs):
     print('Loading model in %s' % absolute_model_dir)
-    st_model = import_model(absolute_model_dir, best=True, should_convert=False, custom_objects={
-        'ConvolutionTranspose2D': ConvolutionTranspose2D,
-        'ScaledSigmoid': ScaledSigmoid
-    })
+    st_model = import_model(absolute_model_dir, best=True, 
+        should_convert=False, custom_objects=custom_objects)
     plot_model(st_model, to_file=output_dir + '/' + str(idx) + '.png', show_shapes=True)
 
     print('Timing batching')

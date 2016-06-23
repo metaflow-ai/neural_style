@@ -14,8 +14,7 @@ from utils.imutils import plot_losses, load_mean, get_image_list, load_images
 from utils.lossutils import (grams, grams_output_shape, total_variation_error_keras)
 from utils.general import mask_data, generate_data_from_image_list, import_model, get_shape
 from utils.callbacks import TensorBoardBatch, ModelCheckpointBatch, HistoryBatch
-from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
-from models.layers.ScaledSigmoid import ScaledSigmoid
+from models.layers import custom_objects
 
 if K._BACKEND == "tensorflow":
     K.set_image_dim_ordering('tf')
@@ -60,10 +59,8 @@ batch_size = args.batch_size
 
 if os.path.isdir(args.model_dir): 
     print("Loading pretrained model in %s" % (args.model_dir))
-    st_model = import_model(args.model_dir, True, should_convert=False, custom_objects={
-        'ConvolutionTranspose2D': ConvolutionTranspose2D,
-        'ScaledSigmoid': ScaledSigmoid
-    })
+    st_model = import_model(args.model_dir, True, 
+                should_convert=False, custom_objects=custom_objects)
 else:
     print('Loading style_transfer model from scratch')
     st_model = style_transfer_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
