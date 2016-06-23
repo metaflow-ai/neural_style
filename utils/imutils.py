@@ -186,9 +186,11 @@ def save_image(fullOutPath, im):
     imsave(fullOutPath, im)
 
 def save_image_st(fullOutPath, im):
-    im = im.transpose((1, 2, 0))
-    
     perm = np.argsort([2, 1, 0])
+
+    if K.image_dim_ordering() == 'th':
+        im = im.transpose((1, 2, 0))
+        
     im = im[:, :, perm]
 
     im = im.clip(0, 255)

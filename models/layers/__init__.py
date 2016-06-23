@@ -1,6 +1,6 @@
-from . import ConvolutionTranspose2D
-from . import ATrousConvolution2D
-from . import ScaledSigmoid
+from .ConvolutionTranspose2D import ConvolutionTranspose2D
+from .ATrousConvolution2D import ATrousConvolution2D
+from .ScaledSigmoid import ScaledSigmoid
 
 custom_objects={
     'ATrousConvolution2D': ATrousConvolution2D,

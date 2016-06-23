@@ -251,3 +251,4 @@ class ATrousConvolution2D(Layer):
                   'bias': self.bias}
         base_config = super(ATrousConvolution2D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
+        

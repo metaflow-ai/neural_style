@@ -47,6 +47,34 @@ def copySeqWeights(model, weightsFullPath, outputFilename, offset=1, limit=-1):
 
     model.save_weights(outputFilename, overwrite=True)
 
+def import_model(absolute_model_dir, best=True, should_convert=False, custom_objects={}):
+    archi_json = open(absolute_model_dir + '/archi.json').read()
+    model = model_from_json(archi_json, custom_objects)
+
+    if os.path.isfile(absolute_model_dir + '/best_weights.hdf5') and best:
+        model.load_weights(absolute_model_dir + '/best_weights.hdf5')
+    else:
+        model.load_weights(absolute_model_dir + '/last_weights.hdf5')
+
+    if should_convert == True:
+        if K._BACKEND == 'tensorflow':
+            ops = []
+            for layer in model.layers:
+               if layer.__class__.__name__ in ['Convolution1D', 'Convolution2D']:
+                  original_w = K.get_value(layer.W)
+                  converted_w = convert_kernel(original_w)
+                  ops.append(tf.assign(layer.W, converted_w).op)
+            K.get_session().run(ops)
+        else:
+            for layer in model.layers:
+               if layer.__class__.__name__ in ['Convolution1D', 'Convolution2D']:
+                  original_w = K.get_value(layer.W)
+                  converted_w = convert_kernel(original_w)
+                  K.set_value(layer.W, converted_w)
+
+
+    return model
+    
 def export_model(model, absolute_model_dir, best_weights=None, saver=None, global_step=None):
     if not os.path.isdir(absolute_model_dir): 
         os.makedirs(absolute_model_dir)
@@ -90,34 +118,6 @@ def freeze_graph(model, absolute_model_dir, best_weights=None):
                               output_node_names, restore_op_name,
                               filename_tensor_name, output_graph_path,
                               clear_devices, "", verbose=False)
-
-def import_model(absolute_model_dir, best=True, should_convert=False, custom_objects={}):
-    archi_json = open(absolute_model_dir + '/archi.json').read()
-    model = model_from_json(archi_json, custom_objects)
-
-    if os.path.isfile(absolute_model_dir + '/best_weights.hdf5') and best:
-        model.load_weights(absolute_model_dir + '/best_weights.hdf5')
-    else:
-        model.load_weights(absolute_model_dir + '/last_weights.hdf5')
-
-    if should_convert == True:
-        if K._BACKEND == 'tensorflow':
-            ops = []
-            for layer in model.layers:
-               if layer.__class__.__name__ in ['Convolution1D', 'Convolution2D']:
-                  original_w = K.get_value(layer.W)
-                  converted_w = convert_kernel(original_w)
-                  ops.append(tf.assign(layer.W, converted_w).op)
-            K.get_session().run(ops)
-        else:
-            for layer in model.layers:
-               if layer.__class__.__name__ in ['Convolution1D', 'Convolution2D']:
-                  original_w = K.get_value(layer.W)
-                  converted_w = convert_kernel(original_w)
-                  K.set_value(layer.W, converted_w)
-
-
-    return model
 
 def get_shape(x):
     if isinstance(x, (np.ndarray)):
