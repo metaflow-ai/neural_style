@@ -2,14 +2,21 @@ from __future__ import absolute_import
 
 import os, sys, time, argparse
 
+
 dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/..')
- 
+
+from keras import backend as K 
 from keras.utils.visualize_util import plot as plot_model
 
 from utils.imutils import load_images
 from utils.general import import_model
 from models.layers import custom_objects
+
+if K._BACKEND == "tensorflow":
+    K.set_image_dim_ordering('tf')
+else:
+    K.set_image_dim_ordering('th')
 
 dir = os.path.dirname(os.path.realpath(__file__)) + '/..'
 dataDir = dir + '/data'
