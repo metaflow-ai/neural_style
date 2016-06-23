@@ -8,7 +8,8 @@ from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
-from models.style_transfer import (style_transfer_conv_inception_3)
+from models.style_transfer import (st_conv_transpose, st_conv_inception_3,
+                        st_atrous_conv_inception, st_atrous_conv_inception_superresolution)
 
 from utils.imutils import plot_losses, load_mean, get_image_list, load_images
 from utils.lossutils import (grams, grams_output_shape, total_variation_error_keras)
@@ -63,7 +64,7 @@ if os.path.isdir(args.model_dir):
                 should_convert=False, custom_objects=custom_objects)
 else:
     print('Loading style_transfer model from scratch')
-    st_model = style_transfer_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+    st_model = st_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
 
 print('Loading VGG headless 5')
 modelWeights = "%s/%s-%s-%s%s" % (vgg19Dir,'vgg-19', dim_ordering, K._BACKEND, '_headless_5_weights.hdf5')

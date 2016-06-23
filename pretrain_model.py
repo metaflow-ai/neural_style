@@ -4,10 +4,10 @@ from keras import backend as K
 from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
-from models.style_transfer import style_transfer_conv_transpose, style_transfer_conv_inception_3
+from models.style_transfer import (st_conv_transpose, st_conv_inception_3,
+                        st_atrous_conv_inception, st_atrous_conv_inception_superresolution)
 
 from utils.imutils import plot_losses, load_images, load_data
-from utils.lossutils import (frobenius_error)
 from utils.general import export_model
 
 if K._BACKEND == "tensorflow":
@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser(
                 'the content of an image and the style of another.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
+parser.add_argument('--model', default='inception', type=str, choices=['transpose', 'inception', 'atrous', 'superresolution'], help='Load pretrained weights')
 parser.add_argument('--training_mode', default='identity', type=str, choices=['identity', 'overfit'], help='Load pretrained weights')
 parser.add_argument('--weights', default='', type=str, help='Load pretrained weights')
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
@@ -64,7 +65,17 @@ print('X_cv.shape', X_cv.shape)
 print('y_cv.shape', y_cv.shape)
 
 print('Loading model')
-st_model = style_transfer_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+if args.model == 'transpose':
+    st_model = st_conv_transpose(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+elif args.model == 'inception':
+    st_model = st_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+elif args.model == 'atrous':
+    st_model = st_atrous_conv_inception(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+elif args.model == 'superresolution':
+    st_model = st_atrous_conv_inception_superresolution(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+else:
+    raise Exception('Model name %s not allowed , should not happen anyway' % args.model)
+
 if os.path.isfile(args.weights): 
     print("Loading weights")
     st_model.load_weights(args.weights)

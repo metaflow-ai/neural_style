@@ -1,17 +1,17 @@
 from __future__ import absolute_import
 
-import os, sys, time, argparse
-
+import os, sys, time, argparse, re
+import numpy as np
 
 dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/..')
 
 from keras import backend as K 
-from keras.utils.visualize_util import plot as plot_model
 
 from utils.imutils import load_images
 from utils.general import import_model
 from models.layers import custom_objects
+from scipy import misc
 
 if K._BACKEND == "tensorflow":
     K.set_image_dim_ordering('tf')
@@ -33,10 +33,8 @@ parser.add_argument('--batch_size', default=30, type=int, help='batch size.')
 parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
 args = parser.parse_args()
 
-channels = 3
 width = args.image_size
 height = args.image_size
-input_shape = (channels, width, height)
 
 X_test = load_images(test_dir, limit=args.batch_size, size=(height, width), verbose=True, st=True)
 print('X_test.shape: ' + str(X_test.shape))
@@ -48,19 +46,23 @@ for idx, absolute_model_dir in enumerate(subdirs):
     print('Loading model in %s' % absolute_model_dir)
     st_model = import_model(absolute_model_dir, best=True, 
         should_convert=False, custom_objects=custom_objects)
-    plot_model(st_model, to_file=output_dir + '/' + str(idx) + '.png', show_shapes=True)
 
-    print('Timing batching')
-    start = time.clock()
-    results = st_model.predict(X_test)
-    end = time.clock()
-    duration_batch = (end-start)/X_test.shape[0]
+    if not len(re.findall('superresolution', absolute_model_dir)):
+        print('Timing batching')
+        start = time.clock()
+        results = st_model.predict(X_test)
+        end = time.clock()
+        duration_batch = (end-start)/X_test.shape[0]
 
     print('Timing looping')
     start = time.clock()
     num_loop = 30
     for i in range(num_loop):
-        results = st_model.predict(X_test[0:1, :, :, :])
+        if len(re.findall('superresolution', absolute_model_dir)):
+            im = misc.imresize(X_test[0], (args.image_size/4, args.image_size/4), interp='bilinear')
+        else:
+            im = X_test[0]
+        results = st_model.predict(np.array([im]))
     end = time.clock()
     duration_loop = (end-start)/num_loop
 

@@ -4,7 +4,6 @@ import os, argparse
 
 from keras import backend as K
 
-from models.style_transfer import style_transfer_conv_transpose
 from utils.imutils import load_images, save_image_st
 from utils.general import import_model
 from models.layers import custom_objects
