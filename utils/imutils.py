@@ -131,11 +131,25 @@ def get_y_fullpath(x_fullpath):
 def resize(im, size):
     if size == None:
         return im
-    elif type(size) == tuple:
+
+    nb_dims = len(im.shape)
+    if nb_dims == 3:
+        if type(size) != tuple:
+            size = float(size) / im.shape[0] # make a float
+            
         return misc.imresize(im, size, interp='bilinear')
+    elif nb_dims == 4:
+        if type(size) != tuple:
+            size = float(size) / im.shape[1] # make a float
+
+        ims = []
+        for i in range(im.shape[0]):                
+            new_im = misc.imresize(im[i], size, interp='bilinear')
+            ims.append(new_im)
+
+        return np.array(ims) 
     else:
-        size = float(size) / im.shape[0] # make a float
-        return misc.imresize(im, size, interp='bilinear')
+        raise Exception('image should have 3 or 4 dimensions')
 
 # input im is assumed in RGB tf ordering
 # return a BGR tf image

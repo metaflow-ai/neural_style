@@ -8,10 +8,9 @@ sys.path.append(dir + '/..')
 
 from keras import backend as K 
 
-from utils.imutils import load_images
+from utils.imutils import load_images, resize
 from utils.general import import_model
 from models.layers import custom_objects
-from scipy import misc
 
 if K._BACKEND == "tensorflow":
     K.set_image_dim_ordering('tf')
@@ -59,7 +58,7 @@ for idx, absolute_model_dir in enumerate(subdirs):
     num_loop = 30
     for i in range(num_loop):
         if len(re.findall('superresolution', absolute_model_dir)):
-            im = misc.imresize(X_test[0], (args.image_size/4, args.image_size/4), interp='bilinear')
+            im = resize(X_test[0], (args.image_size/4, args.image_size/4))
         else:
             im = X_test[0]
         results = st_model.predict(np.array([im]))

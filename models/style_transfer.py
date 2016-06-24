@@ -313,8 +313,8 @@ def st_conv_inception_3(input_shape, weights_path=None, mode=0, nb_res_layer=2):
 
     c13 = Convolution2D(128, 3, 3, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(m)
-    bn13 = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c13)
-    last_out = PReLU()(bn13)
+    out = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c13)
+    last_out = PReLU()(out)
 
     for i in range(nb_res_layer):
         #bottleneck archi
@@ -350,6 +350,9 @@ def st_conv_inception_3(input_shape, weights_path=None, mode=0, nb_res_layer=2):
 
     return model
 
+# Putting a convolution transpose right out of a a trous convolution avoid pixelising images
+# This is the fastest learner so far and the best in term of cross val too
+# Thanks to residual connection, we can remove most batchnorm layers
 def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=2):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
@@ -358,48 +361,49 @@ def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_laye
 
     input = Input(shape=input_shape, name='input_node', dtype='float32')
     # Downsampling
-    c = Convolution2D(13, 3, 3, dim_ordering=K.image_dim_ordering(), 
+    out = Convolution2D(13, 3, 3, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(input)
-    bn11 = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
-    a11 = PReLU()(bn11) 
+    out = PReLU()(out) 
     mp11 = MaxPooling2D(pool_size=(2, 2), dim_ordering=K.image_dim_ordering(), border_mode='same')(input)
-    m = merge([a11, mp11], mode='concat', concat_axis=channel_axis) # 16 layers
+    m = merge([out, mp11], mode='concat', concat_axis=channel_axis) # 16 layers
 
-    c12 = Convolution2D(48, 3, 3, dim_ordering=K.image_dim_ordering(), 
+    out = Convolution2D(48, 3, 3, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(2, 2),  border_mode='same', activation='linear')(m)
-    bn12 = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c12)
-    a12 = PReLU()(bn12)
+    out = PReLU()(out)
     mp12 = MaxPooling2D(pool_size=(2, 2), dim_ordering=K.image_dim_ordering(), border_mode='same')(m)
-    m = merge([a12, mp12], mode='concat', concat_axis=channel_axis) # 64 layers
+    m = merge([out, mp12], mode='concat', concat_axis=channel_axis) # 64 layers
 
-    c13 = ATrousConvolution2D(128, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
+    c = ATrousConvolution2D(128, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', border_mode='same', activation='linear')(m)
-    bn13 = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c13)
-    last_out = PReLU()(bn13)
+    last_out = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
+    # It seems that we can avoid this one here
+    # last_out = PReLU()(last_out)
 
     for i in range(nb_res_layer):
         #bottleneck archi
-        c = Convolution2D(32, 1, 1, dim_ordering=K.image_dim_ordering(), 
+        out = Convolution2D(32, 1, 1, dim_ordering=K.image_dim_ordering(), 
             init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(last_out)
-        bn = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
-        a = PReLU()(bn)
+        out = PReLU()(out)
 
         # Convolutions
-        c = ATrousConvolution2D(32, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
-            init='he_normal', border_mode='same', activation='linear')(a)
-        bn = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
-        a = PReLU()(bn)
-        c = ATrousConvolution2D(32, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
-            init='he_normal', border_mode='same', activation='linear')(a)
-        bn = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
-        a = Activation('relu')(bn)
+        out = ATrousConvolution2D(32, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', border_mode='same', activation='linear')(out)
+        out = PReLU()(out)
+        out = ATrousConvolution2D(32, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', border_mode='same', activation='linear')(out)
+        out = Activation('relu')(out)
 
         #Reverse bottleneck
-        c = Convolution2D(128, 1, 1, dim_ordering=K.image_dim_ordering(), 
-            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a)
-        bn = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
-        last_out = merge([last_out, bn], mode='sum')
+        out = Convolution2D(128, 1, 1, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
+        out = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
+        last_out = merge([last_out, out], mode='sum')
 
+    # Adding a convolution here helps greatly
+    last_out = Convolution2D(64, 3, 3, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(last_out)
+
+    # Separating this convt in two doesn't add any improvement
     ct = ConvolutionTranspose2D(3, 5, 5, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(4, 4), border_mode='same', activation='linear')(last_out)
     out = ScaledSigmoid(scaling=255., name="output_node")(ct)
@@ -445,6 +449,9 @@ def st_atrous_conv_inception_superresolution(input_shape, weights_path=None, mod
             init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a)
         bn = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
         last_out = merge([last_out, bn], mode='sum')
+
+    last_out = Convolution2D(64, 3, 3, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(last_out)
 
     ct = ConvolutionTranspose2D(3, 5, 5, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(4, 4), border_mode='same', activation='linear')(last_out)

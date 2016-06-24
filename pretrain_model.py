@@ -7,7 +7,7 @@ from keras.optimizers import Adam
 from models.style_transfer import (st_conv_transpose, st_conv_inception_3,
                         st_atrous_conv_inception, st_atrous_conv_inception_superresolution)
 
-from utils.imutils import plot_losses, load_images, load_data
+from utils.imutils import plot_losses, load_images, load_data, resize
 from utils.general import export_model
 
 if K._BACKEND == "tensorflow":
@@ -30,7 +30,7 @@ parser.add_argument('--training_mode', default='identity', type=str, choices=['i
 parser.add_argument('--weights', default='', type=str, help='Load pretrained weights')
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
 parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
-parser.add_argument('--nb_epoch', default=1000, type=int, help='Number of epoch.')
+parser.add_argument('--nb_epoch', default=30, type=int, help='Number of epoch.')
 parser.add_argument('--nb_res_layer', default=6, type=int, help='Number of residual layers in the style transfer model.')
 args = parser.parse_args()
 
@@ -72,6 +72,8 @@ elif args.model == 'inception':
 elif args.model == 'atrous':
     st_model = st_atrous_conv_inception(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
 elif args.model == 'superresolution':
+    X = resize(X, (height/4, width/4))
+    X_cv = resize(X_cv, (height/4, width/4))
     st_model = st_atrous_conv_inception_superresolution(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
 else:
     raise Exception('Model name %s not allowed , should not happen anyway' % args.model)

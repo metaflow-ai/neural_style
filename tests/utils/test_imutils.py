@@ -5,7 +5,7 @@ dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir + '/../..')
 
 from utils.imutils import (load_images, load_image, load_mean, 
-                            preprocess, deprocess, create_noise_tensor)
+                            preprocess, deprocess, create_noise_tensor, resize)
 from scipy import misc
 
 from keras import backend as K
@@ -105,6 +105,18 @@ class TestImUtils(unittest.TestCase):
         K.set_image_dim_ordering(previous_image_dim_ordering)
 
         self.assertEqual(file.shape, (1, 4, 5, 3))
+
+    def test_resize(self):
+        previous_image_dim_ordering = K.image_dim_ordering()
+        K.set_image_dim_ordering('tf')
+        
+        ims = load_images(dir + '/../fixture')
+        ims = resize(ims, (150, 150))
+
+        K.set_image_dim_ordering(previous_image_dim_ordering)
+
+        self.assertEqual(ims.shape, (4, 150, 150, 3))
+
         
 
 if __name__ == '__main__':
