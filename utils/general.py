@@ -1,3 +1,4 @@
+import random
 import h5py, os, sys
 import numpy as np
 
@@ -150,6 +151,7 @@ def generate_data_from_image_list(image_list, size, style_fullpath_pefix, input_
         outputs.append([])
     nb_element = 0
     while 1:
+        random.shuffle(image_list)
         for fullpath in image_list:
             nb_element += 1
             if st:
