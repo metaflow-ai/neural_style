@@ -170,12 +170,12 @@ class TensorBoardBatch(Callback):
                 summary_str = result[0]
                 self.writer.add_summary(summary_str, batch)
 
-            for name, value in logs.items():
-                if name in ['batch', 'size']:
-                    continue
-                summary = tf.Summary()
-                summary_value = summary.value.add()
-                summary_value.simple_value = float(value)
-                summary_value.tag = name
-                self.writer.add_summary(summary, batch)
-            self.writer.flush()
+        for name, value in logs.items():
+            if name in ['batch', 'size']:
+                continue
+            summary = tf.Summary()
+            summary_value = summary.value.add()
+            summary_value.simple_value = float(value)
+            summary_value.tag = name
+            self.writer.add_summary(summary, batch)
+        self.writer.flush()

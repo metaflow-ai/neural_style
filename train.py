@@ -169,8 +169,8 @@ for alpha in [5e0]:
                 nb_epoch=args.nb_epoch, 
                 verbose=1,
                 callbacks=callbacks,
-                # validation_data=val_generator, 
-                # nb_val_samples=nb_val_samples,
+                validation_data=val_generator, 
+                nb_val_samples=nb_val_samples,
             )
             history = callbacks[-1]
 
