@@ -8,8 +8,6 @@ from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
-from models.style_transfer import (st_conv_transpose, st_conv_inception_3,
-                        st_atrous_conv_inception, st_atrous_conv_inception_superresolution)
 
 from utils.imutils import plot_losses, load_mean, get_image_list, load_images
 from utils.lossutils import (grams, grams_output_shape, total_variation_error_keras)
@@ -44,7 +42,6 @@ parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', '
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
 parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
 parser.add_argument('--nb_epoch', default=2, type=int, help='Number of epoch.')
-parser.add_argument('--nb_res_layer', default=6, type=int, help='Number of residual layers in the style transfer model.')
 args = parser.parse_args()
 
 dim_ordering = K.image_dim_ordering()
@@ -63,8 +60,7 @@ if os.path.isdir(args.model_dir):
     st_model = import_model(args.model_dir, True, 
                 should_convert=False, custom_objects=custom_objects)
 else:
-    print('Loading style_transfer model from scratch')
-    st_model = st_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+    raise Exception('You must provide a valid model_dir')
 
 print('Loading VGG headless 5')
 modelWeights = "%s/%s-%s-%s%s" % (vgg19Dir,'vgg-19', dim_ordering, K._BACKEND, '_headless_5_weights.hdf5')
@@ -98,7 +94,9 @@ style_fullpath_prefix = paintings_dir + '/results/' + args.style.split('/')[-1].
 train_image_list = get_image_list(train_dir)
 train_samples_per_epoch = len(train_image_list)
 train_generator = generate_data_from_image_list(
-    train_image_list, (height, width), style_fullpath_prefix, true_content_f,
+    train_image_list, (height, width), style_fullpath_prefix,
+    input_len=1, output_len=6,
+    batch_size=args.batch_size, transform_f=true_content_f, 
     verbose=False, st=True
 )
 val_image_list = get_image_list(val_dir)
@@ -106,7 +104,9 @@ if len(val_image_list) > 40:
     val_image_list = val_image_list[:40]
 nb_val_samples = len(val_image_list)
 val_generator = generate_data_from_image_list(
-    val_image_list, (height, width), style_fullpath_prefix, true_content_f,
+    val_image_list, (height, width), style_fullpath_prefix,
+    input_len=1, output_len=6,
+    batch_size=args.batch_size, transform_f=true_content_f, 
     verbose=False, st=True
 )
 # Hack for the tensorboard
@@ -114,7 +114,10 @@ st_model.validation_data = None
 
 print('Iterating over hyper parameters')
 current_iter = 0
-for alpha in [2e2]:
+# Alpha need to be a lot lower than in the gatys_paper
+# This is probably due to the fact that here we are looking at a new content picture each time
+# while the style is always the same
+for alpha in [5e0]: 
     for beta in [1.]:
         for gamma in [1e-4]:
             prefixed_dir = "%s/%s-%s-%s" % (results_dir, str(int(time.time())), K._BACKEND, dim_ordering)
@@ -166,8 +169,8 @@ for alpha in [2e2]:
                 nb_epoch=args.nb_epoch, 
                 verbose=1,
                 callbacks=callbacks,
-                validation_data=val_generator, 
-                nb_val_samples=nb_val_samples,
+                # validation_data=val_generator, 
+                # nb_val_samples=nb_val_samples,
             )
             history = callbacks[-1]
 

@@ -46,7 +46,7 @@ class HistoryBatch(Callback):
         for k, v in logs.items():
             if k not in self.history:
                 self.history[k] = []
-            self.history[k].append(v)
+            self.history[k].append(float(v))
 
 class ModelCheckpointBatch(Callback):
     '''Save the model every nb_step_chkp thx to Tensorflow saver

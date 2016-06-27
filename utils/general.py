@@ -133,24 +133,63 @@ def get_shape(x):
 def mask_data(data, selector):
     return [d for d, s in zip(data, selector) if s]
 
-def generate_data_from_image_list(image_list, size, style_fullpath_pefix, transform_f=None, verbose=False, st=False):
-    file = h5py.File(style_fullpath_pefix + '_' + str(size[0]) + '.hdf5', 'r')
-    y_style1 = np.array(file.get('conv_1_2'))
-    y_style2 = np.array(file.get('conv_2_2'))
-    y_style3 = np.array(file.get('conv_3_4'))
-    y_style4 = np.array(file.get('conv_4_2'))
+def generate_data_from_image_list(image_list, size, style_fullpath_pefix, input_len=1, output_len=1, batch_size=4, transform_f=None, verbose=False, st=False):
+    if transform_f != None:
+        file = h5py.File(style_fullpath_pefix + '_' + str(size[0]) + '.hdf5', 'r')
+        y_style1 = np.array(file.get('conv_1_2'))
+        y_style2 = np.array(file.get('conv_2_2'))
+        y_style3 = np.array(file.get('conv_3_4'))
+        y_style4 = np.array(file.get('conv_4_2'))
 
+    # Init inputs/outputs
+    inputs = []
+    outputs = []
+    for i in range(input_len):
+        inputs.append([])
+    for i in range(output_len):
+        outputs.append([])
+    nb_element = 0
     while 1:
         for fullpath in image_list:
+            nb_element += 1
             if st:
-                im = np.array([load_image_st(fullpath, size, verbose)])
+                im = load_image_st(fullpath, size, verbose)
             else:
-                im = np.array([load_image(fullpath, size, verbose)])
+                im = load_image(fullpath, size, verbose)
+
             if transform_f != None:
-                y_content = transform_f([im])[0]
-                yield ([im], [y_content, y_style1, y_style2, y_style3, y_style4, np.zeros_like(im)])
+                f_input = [ np.array([im]) ]
+                y_content = transform_f(f_input)[0][0] # First element in the list of result, first element of the output batch
+                inputs[0].append(im)
+                outputs[0].append(y_content)
+                outputs[1].append(y_style1)
+                outputs[2].append(y_style2)
+                outputs[3].append(y_style3)
+                outputs[4].append(y_style4)
+                outputs[5].append(np.zeros_like(im))
             else:
-                y_content = im
-                yield ([im], [y_content])
+                for i in range(input_len):
+                    inputs[i].append(im)
+                for i in range(output_len):
+                    outputs[i].append(im)
+
+            if nb_element >= batch_size:
+                nb_element = 0
+
+                inputs_list = []
+                for i in range(input_len):
+                    inputs_list.append(np.array(inputs[i]))
+                outputs_list = []
+                for i in range(output_len):
+                    outputs_list.append(np.array(outputs[i]))
+
+                yield(inputs_list, outputs_list)
+
+                # reset inputs/outputs
+                for i in range(input_len):
+                    inputs[i] = []
+                for i in range(output_len):
+                    outputs[i] = []
+
             
             

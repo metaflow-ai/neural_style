@@ -18,7 +18,7 @@ from models.layers.ScaledSigmoid import ScaledSigmoid
 from utils.general import export_model
 
 # inputs th ordering, BGR
-def st_conv_transpose(input_shape, weights_path=None, mode=0, nb_res_layer=2):
+def st_conv_transpose(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -76,7 +76,7 @@ def st_conv_transpose(input_shape, weights_path=None, mode=0, nb_res_layer=2):
     return model
 
 # Moving from 6 to 12 layers doesn't seem to improve much
-def st_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=2):
+def st_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -148,7 +148,7 @@ def st_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=2):
     return model
 
 # Good direction !
-def st_conv_inception_2(input_shape, weights_path=None, mode=0, nb_res_layer=2):
+def st_conv_inception_2(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -218,7 +218,7 @@ def st_conv_inception_2(input_shape, weights_path=None, mode=0, nb_res_layer=2):
     return model
 
 # Less capacity than the inception "en serie"
-def st_conv_inception_2_parallel(input_shape, weights_path=None, mode=0, nb_res_layer=2):
+def st_conv_inception_2_parallel(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -289,7 +289,7 @@ def st_conv_inception_2_parallel(input_shape, weights_path=None, mode=0, nb_res_
 
     return model
 
-def st_conv_inception_3(input_shape, weights_path=None, mode=0, nb_res_layer=2):
+def st_conv_inception_3(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -353,7 +353,7 @@ def st_conv_inception_3(input_shape, weights_path=None, mode=0, nb_res_layer=2):
 # Putting a convolution transpose right out of a a trous convolution avoid pixelising images
 # This is the fastest learner so far and the best in term of cross val too
 # Thanks to residual connection, we can remove most batchnorm layers
-def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=2):
+def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -378,6 +378,7 @@ def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_laye
     last_out = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
     # It seems that we can avoid this one here
     # last_out = PReLU()(last_out)
+    last_out = Activation('relu')(last_out)
 
     for i in range(nb_res_layer):
         #bottleneck archi
@@ -389,8 +390,8 @@ def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_laye
         out = ATrousConvolution2D(32, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
             init='he_normal', border_mode='same', activation='linear')(out)
         out = PReLU()(out)
-        out = ATrousConvolution2D(32, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
-            init='he_normal', border_mode='same', activation='linear')(out)
+        out = Convolution2D(32, 3, 3, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
         out = Activation('relu')(out)
 
         #Reverse bottleneck
@@ -415,7 +416,7 @@ def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_laye
 
     return model
 
-def st_atrous_conv_inception_superresolution(input_shape, weights_path=None, mode=0, nb_res_layer=2):
+def st_atrous_conv_inception_superresolution(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -465,7 +466,7 @@ def st_atrous_conv_inception_superresolution(input_shape, weights_path=None, mod
     return model
 
 # Doesn't give beter result
-def st_conv_inception_ELU_flattened(input_shape, weights_path=None, mode=0, nb_res_layer=2):
+def st_conv_inception_ELU_flattened(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
