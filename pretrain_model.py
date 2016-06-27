@@ -83,7 +83,7 @@ if os.path.isfile(args.weights):
     st_model.load_weights(args.weights)
 
 print('Compiling model')
-adam = Adam(lr=1e-3)
+adam = Adam(lr=1e-3, clipnorm=1.)
 st_model.compile(adam, loss='mse') # loss=frobenius_error (this is not giving the same loss)
 
 print('Training model')

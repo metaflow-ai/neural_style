@@ -123,7 +123,7 @@ for alpha in [5e0]:
             prefixed_dir = "%s/%s-%s-%s" % (results_dir, str(int(time.time())), K._BACKEND, dim_ordering)
 
             print('Compiling model')
-            adam = Adam(lr=1e-03)
+            adam = Adam(lr=1e-03, clipnorm=1.)
             full_model.compile(optimizer=adam,
                 loss=[
                     # content
