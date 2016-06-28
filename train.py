@@ -115,8 +115,9 @@ st_model.validation_data = None
 print('Iterating over hyper parameters')
 current_iter = 0
 # Alpha need to be a lot lower than in the gatys_paper
-# This is probably due to the fact that here we are looking at a new content picture each time
-# while the style is always the same
+# This is probably due to the fact that here we are looking at a new content picture each batch
+# while the style is always the same and so he can go down the style gradient much faster than the content one
+# which has more noise
 for alpha in [5e0]: 
     for beta in [1.]:
         for gamma in [1e-4]:

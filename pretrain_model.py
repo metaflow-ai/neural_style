@@ -32,6 +32,7 @@ parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
 parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
 parser.add_argument('--nb_epoch', default=30, type=int, help='Number of epoch.')
 parser.add_argument('--nb_res_layer', default=6, type=int, help='Number of residual layers in the style transfer model.')
+parser.add_argument('--lr', default=1e-3, type=float, help='The learning rate')
 args = parser.parse_args()
 
 results_dir = dir + '/models/data/' + args.training_mode
@@ -83,7 +84,7 @@ if os.path.isfile(args.weights):
     st_model.load_weights(args.weights)
 
 print('Compiling model')
-adam = Adam(lr=1e-3, clipnorm=1.)
+adam = Adam(lr=args.lr, clipnorm=1.)
 st_model.compile(adam, loss='mse') # loss=frobenius_error (this is not giving the same loss)
 
 print('Training model')

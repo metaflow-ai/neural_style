@@ -63,7 +63,7 @@ def st_conv_transpose(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     bn81 = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.1, gamma_init='he_normal')(ct81)
     a81 = Activation('relu')(bn81)    
 
-    c91 = ConvolutionTranspose2D(3, 9, 9, dim_ordering=K.image_dim_ordering(), 
+    c91 = Convolution2D(3, 9, 9, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a81)
     out = ScaledSigmoid(scaling=255., name="output_node")(c91)    
 
