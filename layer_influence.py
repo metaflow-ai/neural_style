@@ -48,10 +48,10 @@ if dim_ordering == 'th':
 else:
     input_shape = (width, height, channels)
 
-X_train = np.array([load_image(args.content, size=(height, width), verbose=True)])
+X_train = np.array([load_image(args.content, size=(height, width), preprocess_type='vgg19', verbose=True)])
 print("X_train shape:", X_train.shape)
 
-X_train_style = np.array([load_image(args.style, size=(height, width), verbose=True)])
+X_train_style = np.array([load_image(args.style, size=(height, width), preprocess_type='vgg19', verbose=True)])
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
@@ -110,7 +110,7 @@ for idx_content, lc_name in enumerate(layers_names):
         suffix = "_lc_weight%f_ls_weight%f" % (lc_weight, ls_weight)
         fullOutPath = resultsDir + '/' + prefix + '_style' + ls_name + '_content' + lc_name + suffix + ".png"
         # dump_as_hdf5(resultsDir + '/' + prefix + '_style' + ls_name + '_content' + lc_name + suffix + ".hdf5", best_input_data[0])
-        save_image(fullOutPath, deprocess(best_input_data[0]))
+        save_image(fullOutPath, best_input_data[0], deprocess_type='vgg19')
         plot_losses(losses, resultsDir, prefix, suffix)
 
         current_iter += 1

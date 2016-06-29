@@ -24,7 +24,7 @@ def st_conv_transpose(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     else:
         channel_axis = 1
 
-    input = Input(shape=input_shape, name='input_node', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
     # Downsampling
     c11 = Convolution2D(32, 9, 9, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
@@ -82,7 +82,7 @@ def st_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     else:
         channel_axis = 1
 
-    input = Input(shape=input_shape, name='input_node', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
     # Downsampling
     c = Convolution2D(13, 3, 3, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(input)
@@ -154,7 +154,7 @@ def st_conv_inception_2(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     else:
         channel_axis = 1
 
-    input = Input(shape=input_shape, name='input_node', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
     # Downsampling
     c = Convolution2D(13, 3, 3, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(input)
@@ -224,7 +224,7 @@ def st_conv_inception_2_parallel(input_shape, weights_path=None, mode=0, nb_res_
     else:
         channel_axis = 1
 
-    input = Input(shape=input_shape, name='input_node', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
     # Downsampling
     c = Convolution2D(13, 3, 3, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(input)
@@ -295,7 +295,7 @@ def st_conv_inception_3(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     else:
         channel_axis = 1
 
-    input = Input(shape=input_shape, name='input_node', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
     # Downsampling
     c = Convolution2D(13, 3, 3, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(input)
@@ -359,7 +359,7 @@ def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_laye
     else:
         channel_axis = 1
 
-    input = Input(shape=input_shape, name='input_node', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
     # Downsampling
     out = Convolution2D(13, 3, 3, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(input)
@@ -422,7 +422,7 @@ def st_atrous_conv_inception_superresolution(input_shape, weights_path=None, mod
     else:
         channel_axis = 1
 
-    input = Input(shape=input_shape, name='input_node', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
     c13 = ATrousConvolution2D(128, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', border_mode='same', activation='linear')(input)
     bn13 = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c13)
@@ -472,7 +472,7 @@ def st_conv_inception_ELU_flattened(input_shape, weights_path=None, mode=0, nb_r
     else:
         channel_axis = 1
 
-    input = Input(shape=input_shape, name='input_node', dtype='float32')
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
     # Downsampling
     c_hori = Convolution2D(13, 1, 9, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(input)

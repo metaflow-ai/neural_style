@@ -35,7 +35,7 @@ args = parser.parse_args()
 width = args.image_size
 height = args.image_size
 
-X_test = load_images(test_dir, limit=args.batch_size, size=(height, width), verbose=True, st=True)
+X_test = load_images(test_dir, limit=args.batch_size, size=(height, width), preprocess_type='st', verbose=True)
 print('X_test.shape: ' + str(X_test.shape))
 
 current_iter = 0

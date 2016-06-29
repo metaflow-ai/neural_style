@@ -13,7 +13,7 @@ from keras.layers import Input
 from keras.models import Model
 
 from utils.general import export_model, import_model
-from utils.imutils import load_image_st
+from utils.imutils import load_image
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -49,7 +49,7 @@ class TestGeneralUtils(unittest.TestCase):
 
         should_convert = K._BACKEND == "theano"
         model = import_model(data_model_folder, should_convert=should_convert)
-        input_img = np.array([load_image_st(dir + '/../fixture/blue.png', size=None, verbose=False)])
+        input_img = np.array([load_image(dir + '/../fixture/blue.png', size=None, preprocess_type='st', verbose=False)])
 
         
 

@@ -52,10 +52,10 @@ if dim_ordering == 'th':
 else:
     input_shape = (width, height, channels)
 
-X_train = np.array([load_image(args.content, size=(height, width), verbose=True)])
+X_train = np.array([load_image(args.content, size=(height, width), preprocess_type='vgg19', verbose=True)])
 print("X_train shape:", X_train.shape)
 
-X_train_style = np.array([load_image(args.style, size=(height, width), verbose=True)])
+X_train_style = np.array([load_image(args.style, size=(height, width), preprocess_type='vgg19', verbose=True)])
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
@@ -99,7 +99,7 @@ for layer_name in layers_names:
         max_iter=args.max_iter,
     )
     fullOutPath = resultsDir + '/' + prefix + '_style_' + layer_name  + ".png"
-    save_image(fullOutPath, deprocess(best_input_style_data[0]))
+    save_image(fullOutPath, best_input_style_data[0], deprocess_type='vgg19')
     plot_losses(style_losses, resultsDir, prefix + '_style_')
 
     print('Compiling VGG headless 1 for ' + layer_name + ' content reconstruction')
@@ -113,7 +113,7 @@ for layer_name in layers_names:
     config = {'learning_rate': 5e-1}
     best_input_content_data, content_losses = train_input(input_data, iterate_content, optimizer, config, max_iter=args.max_iter)
     fullOutPath = resultsDir + '/' + prefix + '_content_' + layer_name  + ".png"
-    save_image(fullOutPath, deprocess(best_input_content_data[0]))
+    save_image(fullOutPath, best_input_content_data[0], deprocess_type='vgg19')
     plot_losses(content_losses, resultsDir, prefix + '_content_')
 
     mean_losses[layer_name] = {

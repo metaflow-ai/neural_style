@@ -14,7 +14,7 @@ from keras.models import model_from_json
 from keras.utils.np_utils import convert_kernel
 from vgg19.model_headless import get_layer_data
 
-from imutils import load_image, load_image_st, get_image_list
+from imutils import load_image, get_image_list
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -134,7 +134,7 @@ def get_shape(x):
 def mask_data(data, selector):
     return [d for d, s in zip(data, selector) if s]
 
-def generate_data_from_image_list(image_list, size, style_fullpath_pefix, input_len=1, output_len=1, batch_size=4, transform_f=None, verbose=False, st=False):
+def generate_data_from_image_list(image_list, size, style_fullpath_pefix, input_len=1, output_len=1, batch_size=4, transform_f=None, preprocess_type='none', verbose=False):
     if transform_f != None:
         file = h5py.File(style_fullpath_pefix + '_' + str(size[0]) + '.hdf5', 'r')
         y_style1 = np.array(file.get('conv_1_2'))
@@ -154,10 +154,8 @@ def generate_data_from_image_list(image_list, size, style_fullpath_pefix, input_
         random.shuffle(image_list)
         for fullpath in image_list:
             nb_element += 1
-            if st:
-                im = load_image_st(fullpath, size, verbose)
-            else:
-                im = load_image(fullpath, size, verbose)
+            
+            im = load_image(fullpath, size, preprocess_type=preprocess_type, verbose=verbose)
 
             if transform_f != None:
                 f_input = [ np.array([im]) ]

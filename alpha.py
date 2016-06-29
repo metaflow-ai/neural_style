@@ -6,8 +6,7 @@ from keras import backend as K
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
 from utils.imutils import (load_image, create_noise_tensor, 
-                    dump_as_hdf5, deprocess, save_image,
-                    plot_losses)
+                        save_image, plot_losses)
 from utils.lossutils import (frobenius_error, grams, norm_l2, train_input)
 
 if K._BACKEND == "tensorflow":
@@ -48,10 +47,10 @@ if dim_ordering == 'th':
 else:
     input_shape = (width, height, channels)
 
-X_train = np.array([load_image(args.content, size=(height, width), verbose=True)])
+X_train = np.array([load_image(args.content, size=(height, width), preprocess_type='vgg19', verbose=True)])
 print("X_train shape:", X_train.shape)
 
-X_train_style = np.array([load_image(args.style, size=(height, width), verbose=True)])
+X_train_style = np.array([load_image(args.style, size=(height, width), preprocess_type='vgg19', verbose=True)])
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
@@ -111,7 +110,7 @@ for alpha in [1e0, 3e0, 6e0, 1e1, 3e1, 6e1, 1e2, 3e2, 6e2, 1e3, 3e3, 6e3]:
     suffix = "_lc_weight%f_ls_weight%f" % (lc_weight, ls_weight)
     fullOutPath = resultsDir + '/' + prefix + '_style' + ls_name + '_content' + lc_name + suffix + ".png"
     # dump_as_hdf5(resultsDir + '/' + prefix + '_style' + ls_name + '_content' + lc_name + suffix + ".hdf5", best_input_data[0])
-    save_image(fullOutPath, deprocess(best_input_data[0]))
+    save_image(fullOutPath, best_input_data[0], deprocess_type='vgg19')
     plot_losses(losses, resultsDir, prefix, suffix)
 
     current_iter += 1

@@ -8,7 +8,7 @@ if K._BACKEND == 'theano':
 else:
     import tensorflow as tf
 
-from utils.imutils import load_image_st
+from utils.imutils import load_image
 from utils.general import get_shape
 from utils.optimizers import adam
 from scipy.optimize import fmin_l_bfgs_b
@@ -188,10 +188,10 @@ def train_weights(input_dir, size, model, train_iteratee, cv_input_dir=None, max
         y_ims = []
         for idx, fullpath in enumerate(files):
             if load_result == True:
-                im, y_im = load_image_st(fullpath, size=size, verbose=False, load_result=load_result) # th ordering, BGR
+                im, y_im = load_image(fullpath, size=size, preprocess_type='st', verbose=False, load_result=load_result) # th ordering, BGR
                 y_ims.append(y_im)
             else:
-                im = load_image_st(fullpath, size=size, verbose=False, load_result=load_result) # th ordering, BGR
+                im = load_image(fullpath, size=size, preprocess_type='st', verbose=False, load_result=load_result) # th ordering, BGR
             ims.append(im)
 
             if len(ims) >= batch_size or idx == len(files) - 1:

@@ -28,9 +28,9 @@ def memoize(obj):
 
     return memoizer
 
-def load_data(absPath, limit=-1, size=(600, 600), verbose=False, st=False):
-    X, y = load_images(absPath, limit, size, verbose=verbose, st=st, load_result=True)
-    X_cv, y_cv = load_images(absPath + '/cv', limit, size, verbose=verbose, st=st, load_result=True)
+def load_data(absPath, limit=-1, size=(600, 600), preprocess_type='none', verbose=False):
+    X, y = load_images(absPath, limit, size, preprocess_type=preprocess_type, verbose=verbose, load_result=True)
+    X_cv, y_cv = load_images(absPath + '/cv', limit, size, preprocess_type=preprocess_type, verbose=verbose, load_result=True)
         
     return (X, y), (X_cv, y_cv)
 
@@ -39,7 +39,7 @@ def get_image_list(absPath):
 
     return filenames
 
-def load_images(absPath, limit=-1, size=(600, 600), verbose=False, st=False, load_result=False):
+def load_images(absPath, limit=-1, size=(600, 600), preprocess_type='none', verbose=False, load_result=False):
     ims = []
     y_ims = []
     if type(absPath) == list:
@@ -50,16 +50,10 @@ def load_images(absPath, limit=-1, size=(600, 600), verbose=False, st=False, loa
         if limit > 0 and idx >= limit:
             break
         
-        if st:
-            if load_result == True:
-                im, y_im = load_image_st(fullpath, size, verbose, load_result)
-            else:
-                im = load_image_st(fullpath, size, verbose, load_result)
+        if load_result == True:
+            im, y_im = load_image(fullpath, size, preprocess_type, verbose, load_result)
         else:
-            if load_result == True:
-                im, y_im = load_image(fullpath, size, verbose, load_result)
-            else:
-                im = load_image(fullpath, size, verbose, load_result)
+            im = load_image(fullpath, size, preprocess_type, verbose, load_result)
 
         ims.append(im)
         if load_result == True:
@@ -70,12 +64,12 @@ def load_images(absPath, limit=-1, size=(600, 600), verbose=False, st=False, loa
     else:
         return np.array(ims)
 
-def load_image(fullpath, size=(600, 600), verbose=False, load_result=False):
+def load_image(fullpath, size=(600, 600), preprocess_type='none', verbose=False, load_result=False):
     if verbose:
         print('Loading %s' % fullpath)
     # VGG needs BGR data
     im = misc.imread(fullpath, mode='RGB') # tf ordering
-    im = preprocess(im.copy(), size) # tf ordering
+    im = preprocess(im.copy(), size, type=preprocess_type) # tf ordering
     if K.image_dim_ordering() == 'th':
         im = im.transpose(2, 0, 1)
 
@@ -85,37 +79,9 @@ def load_image(fullpath, size=(600, 600), verbose=False, load_result=False):
             print('Loading %s' % y_fullpath)
 
         y_im = misc.imread(y_fullpath, mode='RGB') # height, width, channels
-        y_im = preprocess(y_im.copy(), size)
+        y_im = preprocess(y_im.copy(), size, type=preprocess_type)
         if K.image_dim_ordering() == 'th':
             y_im = y_im.transpose(2, 0, 1)
-
-        return im, y_im
-
-    return im
-
-def load_image_st(fullpath, size=(600, 600), verbose=False, load_result=False):
-    if verbose:
-        print('Loading %s' % fullpath)
-
-    perm = np.argsort([2, 1, 0])
-
-    im = misc.imread(fullpath, mode='RGB') # tf ordering, RGB
-    im = resize(im, size)
-    im = im[:, :, perm] # th ordering, BGR
-    if K.image_dim_ordering() == 'th':
-        im = im.transpose(2, 0, 1)
-    im = im.copy().astype(K.floatx())
-
-    if load_result == True:
-        y_fullpath = get_y_fullpath(fullpath)
-        if verbose:
-            print('Loading %s' % y_fullpath)
-        y_im = misc.imread(y_fullpath, mode='RGB') # tf ordering, RGB
-        y_im = resize(y_im, size)
-        y_im = y_im[:, :, perm] # th ordering, BGR
-        if K.image_dim_ordering() == 'th':
-            y_im = y_im.transpose(2, 0, 1)
-        y_im = y_im.copy().astype(K.floatx())
 
         return im, y_im
 
@@ -153,63 +119,68 @@ def resize(im, size):
 
 # input im is assumed in RGB tf ordering
 # return a BGR tf image
-def preprocess(im, size=None):
+def preprocess(im, size=None, type='none'):
     # im is in a tf ordering
     im = resize(im, size)
     im = im.copy().astype(K.floatx())
+    if type == 'none':
+        pass
+    elif type == 'vgg19':
+        nb_dims = len(im.shape)
+        dim_ordering = K.image_dim_ordering()
+        mean = load_mean() # load with K.image_dim_ordering()
+        if dim_ordering == 'th': # 'th' dim_ordering: [channels, height, width] 
+            mean = mean.transpose(0, 2, 3, 1)
+        perm = np.argsort([2, 1, 0]) # VGG needs BGR
 
-    nb_dims = len(im.shape)
-    dim_ordering = K.image_dim_ordering()
-    mean = load_mean() # load with K.image_dim_ordering()
-    if dim_ordering == 'th': # 'th' dim_ordering: [channels, height, width] 
-        mean = mean.transpose(0, 2, 3, 1)
-    perm = np.argsort([2, 1, 0]) # VGG needs BGR
-
-    if nb_dims == 3:
-        im = im[:, :, perm] 
-        im -= mean[0]
-    elif nb_dims == 4:
-        im = im[:, :, :, perm] 
-        im -= mean
+        if nb_dims == 3:
+            im = im[:, :, perm] 
+            im -= mean[0]
+        elif nb_dims == 4:
+            im = im[:, :, :, perm] 
+            im -= mean
+        else:
+            raise Exception('image should have 3 or 4 dimensions')
+    elif type == 'st':
+        perm = np.argsort([2, 1, 0])
+        im = im[:, :, perm] # th ordering, BGR
     else:
-        raise Exception('image should have 3 or 4 dimensions')
+        raise Exception('Unknown preprocess type: %s' % type)
 
     return im
 
-def deprocess(im):
+def deprocess(im, type='none'):
     im = np.copy(im)
 
-    nb_dims = len(im.shape)
-    mean = load_mean() # load with K.image_dim_ordering()
-    perm = np.argsort([2, 1, 0]) # VGG needed BGR
-    if nb_dims == 3:
-        im += mean[0]
+    if type =='none':
+        pass
+    elif type =='vgg19':
+        nb_dims = len(im.shape)
+        mean = load_mean() # load with K.image_dim_ordering()
+        perm = np.argsort([2, 1, 0]) # VGG needed BGR
+        if nb_dims == 3:
+            im += mean[0]
+            im = im[:, :, perm]
+        elif nb_dims == 4:
+            im += mean
+            im = im[:, :, :, perm]
+        else:
+            raise Exception('image should have 3 or 4 dimensions')
+    elif type =='st':
+        perm = np.argsort([2, 1, 0])
+
+        if K.image_dim_ordering() == 'th':
+            im = im.transpose((1, 2, 0))
+            
         im = im[:, :, perm]
-    elif nb_dims == 4:
-        im += mean
-        im = im[:, :, :, perm]
-    else:
-        raise Exception('image should have 3 or 4 dimensions')
 
     im = im.clip(0, 255)
     im = im.astype('uint8')
 
     return im
 
-def save_image(fullOutPath, im):
-    imsave(fullOutPath, im)
-
-def save_image_st(fullOutPath, im):
-    perm = np.argsort([2, 1, 0])
-
-    if K.image_dim_ordering() == 'th':
-        im = im.transpose((1, 2, 0))
-        
-    im = im[:, :, perm]
-
-    im = im.clip(0, 255)
-    im = im.astype('uint8')
-
+def save_image(fullOutPath, im, deprocess_type='none'):
+    im = deprocess(im, deprocess_type)
     imsave(fullOutPath, im)
 
 def load_mean(name='vgg19'):

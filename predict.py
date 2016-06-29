@@ -4,7 +4,7 @@ import os, argparse
 
 from keras import backend as K
 
-from utils.imutils import load_images, save_image_st
+from utils.imutils import load_images, save_image
 from utils.general import import_model
 from models.layers import custom_objects
 
@@ -38,8 +38,8 @@ if dim_ordering == 'th':
 else:
     input_shape = (width, height, channels)
 
-X_overfit = load_images(overfit_dir, limit=args.batch_size, size=(height, width), verbose=True, st=True)
-X_test = load_images(test_dir, limit=args.batch_size, size=(height, width), verbose=True, st=True)
+X_overfit = load_images(overfit_dir, limit=args.batch_size, size=(height, width), preprocess_type='st', verbose=True)
+X_test = load_images(test_dir, limit=args.batch_size, size=(height, width), preprocess_type='st', verbose=True)
 print('X_test.shape: ' + str(X_test.shape))
 print('X_overfit.shape: ' + str(X_overfit.shape))
 
@@ -62,17 +62,17 @@ for absolute_model_dir in subdirs:
     for idx, im in enumerate(results):
         prefix = str(current_iter).zfill(4)
         fullOutPath = tmp_output_dir + '/' + prefix + "_" + str(idx) + ".png"
-        save_image_st(fullOutPath, im)
+        save_image(fullOutPath, im, deprocess_type='st')
         fullOriPath = tmp_output_dir + '/' + prefix + "_" + str(idx) + "_ori.png"
-        save_image_st(fullOriPath, X_test[idx])
+        save_image(fullOriPath, X_test[idx], deprocess_type='st')
 
         current_iter += 1
 
     for idx, im in enumerate(results_overfit):
         prefix = str(current_iter).zfill(4)
         fullOutPath = tmp_output_dir + '/' + prefix + str(idx) + "_overfit.png"
-        save_image_st(fullOutPath, im)
+        save_image(fullOutPath, im, deprocess_type='st')
         fullOriPath = tmp_output_dir + '/' + prefix + str(idx) + "_overfit_ori.png"
-        save_image_st(fullOriPath, X_overfit[idx])
+        save_image(fullOriPath, X_overfit[idx], deprocess_type='st')
 
         current_iter += 1

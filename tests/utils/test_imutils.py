@@ -35,13 +35,32 @@ class TestImUtils(unittest.TestCase):
     # def test_load_mean_exception(self):
     #     self.assertRaises(Exception, load_mean('test'))
 
-    def test_preprocess_tf(self):
+    def test_preprocess_tf_vgg19(self):
         previous_image_dim_ordering = K.image_dim_ordering()
         K.set_image_dim_ordering('tf')
         blue_im = misc.imread(dir + '/../fixture/blue.png')
         red_im = np.array(misc.imread(dir + '/../fixture/red.png').astype(K.floatx()))
         red_im = (red_im - load_mean()[0]).astype('uint8')
-        new_red_im = preprocess(blue_im).astype('uint8')
+        new_red_im = preprocess(blue_im, type='vgg19').astype('uint8')
+        K.set_image_dim_ordering(previous_image_dim_ordering)
+
+        self.assertEqual(True, (red_im==new_red_im).all())
+
+    def test_preprocess_tf_none(self):
+        previous_image_dim_ordering = K.image_dim_ordering()
+        K.set_image_dim_ordering('tf')
+        blue_im = misc.imread(dir + '/../fixture/blue.png')        
+        new_blue_im = preprocess(blue_im).astype('uint8')
+        K.set_image_dim_ordering(previous_image_dim_ordering)
+        
+        self.assertEqual(True, (blue_im==new_blue_im).all())
+
+    def test_preprocess_tf_st(self):
+        previous_image_dim_ordering = K.image_dim_ordering()
+        K.set_image_dim_ordering('tf')
+        blue_im = misc.imread(dir + '/../fixture/blue.png')
+        red_im = np.array(misc.imread(dir + '/../fixture/red.png').astype(K.floatx()))
+        new_red_im = preprocess(blue_im, type='st').astype('uint8')
         K.set_image_dim_ordering(previous_image_dim_ordering)
 
         self.assertEqual(True, (red_im==new_red_im).all())

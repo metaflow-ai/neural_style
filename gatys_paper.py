@@ -60,10 +60,10 @@ if os.path.isdir(args.content):
     image_list = get_image_list(args.content)
 else:
     image_list = [args.content]
-X_train = load_images(image_list, size=(height, width), verbose=True)
+X_train = load_images(image_list, size=(height, width), preprocess_type='vgg19', verbose=True)
 print("X_train shape:", X_train.shape)
 
-X_train_style = np.array([load_image(args.style, size=(height, width), verbose=True)])
+X_train_style = np.array([load_image(args.style, size=(height, width), preprocess_type='vgg19', verbose=True)])
 print("X_train_style shape:", X_train_style.shape)
 
 print('Loading VGG headless 5')
@@ -166,7 +166,7 @@ for file_idx in range(len(X_train)):
                         current_iter = obj['current_iter']
                         input_data = obj['input_data']
                         if current_iter % 25 == 0 and args.print_inter_img == True:
-                            save_image(output_dir + '/' + filename_array[0] + suffix + + '_' + str(current_iter.zfill(5)) + '.' + filename_array[1], deprocess(input_data[0]))
+                            save_image(output_dir + '/' + filename_array[0] + suffix + + '_' + str(current_iter.zfill(5)) + '.' + filename_array[1], input_data[0], deprocess_type='vgg19')
 
                     best_input_data, losses = train_input(
                         input_data, 
@@ -178,7 +178,7 @@ for file_idx in range(len(X_train)):
                     )
 
                     print('Dumping data')
-                    save_image(output_dir + '/' + out_filename, deprocess(best_input_data[0]))
+                    save_image(output_dir + '/' + out_filename, best_input_data[0], deprocess_type='vgg19')
                     if args.no_dump_losses == False:
                         plot_losses(losses, output_dir, filename_array[0], suffix)
 

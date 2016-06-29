@@ -52,12 +52,12 @@ batch_size = args.batch_size
 
 print('Loading data')
 if args.training_mode == 'identity':
-    X = load_images(overfitDir, size=(height, width), verbose=False, st=True)
+    X = load_images(overfitDir, size=(height, width), preprocess_type='st', verbose=False)
     y = X.copy()
-    X_cv = load_images(overfitDir + '/cv', size=(height, width), verbose=False, st=True)
+    X_cv = load_images(overfitDir + '/cv', size=(height, width), preprocess_type='st', verbose=False)
     y_cv = X_cv.copy()
 elif args.training_mode == 'overfit':
-    (X, y), (X_cv, y_cv) = load_data(overfitDir, size=(height, width), verbose=False, st=True)
+    (X, y), (X_cv, y_cv) = load_data(overfitDir, size=(height, width), preprocess_type='st', verbose=False)
 else:
     raise Exception('training_mode unknown: %s' % args.training_mode)
 print('X.shape', X.shape)

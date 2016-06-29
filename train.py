@@ -9,7 +9,7 @@ from keras.optimizers import Adam
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
-from utils.imutils import plot_losses, load_mean, get_image_list, load_images
+from utils.imutils import plot_losses, load_mean, get_image_list
 from utils.lossutils import (grams, grams_output_shape, total_variation_error_keras)
 from utils.general import mask_data, generate_data_from_image_list, import_model, get_shape
 from utils.callbacks import TensorBoardBatch, ModelCheckpointBatch, HistoryBatch
@@ -96,8 +96,8 @@ train_samples_per_epoch = len(train_image_list)
 train_generator = generate_data_from_image_list(
     train_image_list, (height, width), style_fullpath_prefix,
     input_len=1, output_len=6,
-    batch_size=args.batch_size, transform_f=true_content_f, 
-    verbose=False, st=True
+    batch_size=args.batch_size, transform_f=true_content_f, preprocess_type='st',
+    verbose=False
 )
 val_image_list = get_image_list(val_dir)
 if len(val_image_list) > 40:
@@ -106,8 +106,8 @@ nb_val_samples = len(val_image_list)
 val_generator = generate_data_from_image_list(
     val_image_list, (height, width), style_fullpath_prefix,
     input_len=1, output_len=6,
-    batch_size=args.batch_size, transform_f=true_content_f, 
-    verbose=False, st=True
+    batch_size=args.batch_size, transform_f=true_content_f, preprocess_type='st',
+    verbose=False
 )
 # Hack for the tensorboard
 st_model.validation_data = None
@@ -173,9 +173,3 @@ for alpha in [5e0]:
                 validation_data=val_generator, 
                 nb_val_samples=nb_val_samples,
             )
-            history = callbacks[-1]
-
-            print("Saving final data")
-            with open(prefixed_dir + '/losses.json', 'w') as outfile:
-                json.dump(history.history, outfile)  
-            plot_losses(history.history, prefixed_dir)
