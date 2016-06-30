@@ -14,7 +14,7 @@ from keras.models import model_from_json
 from keras.utils.np_utils import convert_kernel
 from vgg19.model_headless import get_layer_data
 
-from imutils import load_image, get_image_list
+from imutils import load_image, get_image_list, preprocess
 
 dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -158,7 +158,7 @@ def generate_data_from_image_list(image_list, size, style_fullpath_pefix, input_
             im = load_image(fullpath, size, preprocess_type=preprocess_type, verbose=verbose)
 
             if transform_f != None:
-                f_input = [ np.array([im]) ]
+                f_input = [ preprocess(np.array([im]), type='vgg19') ]
                 y_content = transform_f(f_input)[0][0] # First element in the list of result, first element of the output batch
                 inputs[0].append(im)
                 outputs[0].append(y_content)

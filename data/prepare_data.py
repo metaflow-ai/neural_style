@@ -64,7 +64,7 @@ predict_content = K.function([vgg_model.input], content_output_layers)
 if 'results_style_dir' in locals():
     image_list = get_image_list(args.style_dir)
     for image_path in image_list:
-        X_train_style = np.array([load_image(image_path, size=(height,width), verbose=True)])
+        X_train_style = np.array([load_image(image_path, size=(height,width), preprocess_type='vgg19', verbose=True)])
         results = predict_style([X_train_style])
 
         filename = image_path.split('/')[-1].split('.')[0]
@@ -77,7 +77,7 @@ if 'results_content_dir' in locals():
     print('be carefull, every file dumped is taking 22mb, check you have enough space')
     image_list = get_image_list(args.content_dir)
     for image_path in image_list:
-        X_train_content = np.array([load_image(image_path, size=(height, width), verbose=True)])
+        X_train_content = np.array([load_image(image_path, size=(height, width), preprocess_type='vgg19', verbose=True)])
         results = predict_content([X_train_content])
 
         filename = image_path.split('/')[-1].split('.')[0]
