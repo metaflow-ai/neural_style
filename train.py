@@ -55,12 +55,26 @@ else:
     input_shape = (width, height, channels)
 batch_size = args.batch_size
 
+prefixed_dir = "%s/%s-%s-%s" % (results_dir, str(int(time.time())), K._BACKEND, dim_ordering)
+
 if os.path.isdir(args.model_dir): 
     print("Loading pretrained model in %s" % (args.model_dir))
     st_model = import_model(args.model_dir, True, 
                 should_convert=False, custom_objects=custom_objects)
 else:
     raise Exception('You must provide a valid model_dir')
+
+callbacks = []
+if K._BACKEND == "tensorflow":
+    tb = TensorBoardBatch(st_model, log_dir=prefixed_dir, histogram_freq=200, image_freq=201, write_graph=True)
+    # We separate the image_freq and the histogram_freq just to avoid dumping everything at the same time
+    callbacks.append(tb)
+callbacks.append(
+    ModelCheckpointBatch(st_model, chkp_dir=prefixed_dir + '/chkp', nb_step_chkp=200)
+)
+callbacks.append(
+    HistoryBatch()
+)
 
 print('Loading VGG headless 5')
 modelWeights = "%s/%s-%s-%s%s" % (vgg19Dir,'vgg-19', dim_ordering, K._BACKEND, '_headless_5_weights.hdf5')
@@ -72,8 +86,13 @@ content_layers = ['conv_3_2']
 content_layers_mask = [name in content_layers for name in layers_names]
 
 print('Building full model')
-mean = load_mean(name='vgg19') # th ordering, BGR
-preprocessed_output = Lambda(lambda x: x - mean, name="ltv")(st_model.output) # th, BGR ordering, sub mean
+mean = load_mean(name='vgg19') # BGR
+if K._BACKEND == "tensorflow":
+    import tensorflow as tf
+    preprocessed_output = Lambda(lambda x: tf.reverse(x, [False, False, False, True]) - mean, name="ltv")(st_model.output) # RGB -> BGR -> BGR - mean
+else:
+    import theano.tensor as T
+    preprocessed_output = Lambda(lambda x: T.reverse(x, [False, True, False, False]) - mean, name="ltv")(st_model.output) # RGB -> BGR -> BGR - mean
 preds = vgg_model(preprocessed_output)
 style_preds = mask_data(preds, style_layers_mask)
 style_preds = [Lambda(grams, grams_output_shape, name='style' + str(idx))(style_pred) for idx, style_pred in enumerate(style_preds)]
@@ -96,21 +115,22 @@ train_samples_per_epoch = len(train_image_list)
 train_generator = generate_data_from_image_list(
     train_image_list, (height, width), style_fullpath_prefix,
     input_len=1, output_len=6,
-    batch_size=args.batch_size, transform_f=true_content_f, preprocess_type='st',
+    batch_size=args.batch_size, transform_f=true_content_f, preprocess_type='none',
     verbose=False
 )
 val_image_list = get_image_list(val_dir)
-if len(val_image_list) > 40:
-    val_image_list = val_image_list[:40]
+if len(val_image_list) > 20:
+    val_image_list = val_image_list[:20]
 nb_val_samples = len(val_image_list)
 val_generator = generate_data_from_image_list(
     val_image_list, (height, width), style_fullpath_prefix,
     input_len=1, output_len=6,
-    batch_size=args.batch_size, transform_f=true_content_f, preprocess_type='st',
+    batch_size=args.batch_size, transform_f=true_content_f, preprocess_type='none',
     verbose=False
 )
-# Hack for the tensorboard
-st_model.validation_data = None
+# Tensorboard callback doen't handle generator so far and we actually only need one image
+validation_data = val_generator.next()
+st_model.validation_data = validation_data[0]
 
 print('Iterating over hyper parameters')
 current_iter = 0
@@ -121,8 +141,6 @@ current_iter = 0
 for alpha in [5e0]: 
     for beta in [1.]:
         for gamma in [1e-4]:
-            prefixed_dir = "%s/%s-%s-%s" % (results_dir, str(int(time.time())), K._BACKEND, dim_ordering)
-
             print('Compiling model')
             adam = Adam(lr=1e-03, clipnorm=1.)
             full_model.compile(optimizer=adam,
@@ -150,17 +168,6 @@ for alpha in [5e0]:
                 ]
             )
             print('Training model')
-            callbacks = []
-            if K._BACKEND == "tensorflow":
-                callbacks.append(
-                    TensorBoardBatch(st_model, log_dir=prefixed_dir + '/logs', histogram_freq=200)
-                )
-            callbacks.append(
-                ModelCheckpointBatch(st_model, chkp_dir=prefixed_dir + '/chkp', nb_step_chkp=200)
-            )
-            callbacks.append(
-                HistoryBatch()
-            )
             # This will set st_model for all callbacks even default those that i don't want ...
             # setattr(full_model, 'callback_model', st_model)
             # So i prefer to override the _set_model func

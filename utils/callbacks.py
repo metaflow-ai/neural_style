@@ -3,7 +3,6 @@ import os
 from keras import backend as K
 from keras.callbacks import Callback
 
-from utils.imutils import load_images, save_image_st, save_image
 from utils.general import export_model
 
 dir = os.path.dirname(os.path.realpath(__file__))
@@ -15,19 +14,6 @@ outputDir = dataDir + '/output'
 if not os.path.isdir(outputDir): 
     os.makedirs(outputDir)
 overfitDir = dataDir + '/overfit'
-
-def dump_img_st(data):
-    current_iter = data['current_iter']
-    # losses = data['losses']
-    st_model = data['st_model']
-    X_overfit = load_images(overfitDir, limit=1, size=(512, 512), dim_ordering='th', verbose=True, st=True)
-    predict = K.function([st_model.input, K.learning_phase()], st_model.output)
-
-    results = predict([X_overfit, True])
-
-    prefix = str(current_iter).zfill(4)
-    fullOutPath = outputDir + '/' + prefix + "_callback_" + str(current_iter) + ".png"
-    save_image_st(fullOutPath, results[0])
 
 class HistoryBatch(Callback):
     '''Callback that records events
@@ -51,11 +37,11 @@ class HistoryBatch(Callback):
 class ModelCheckpointBatch(Callback):
     '''Save the model every nb_step_chkp thx to Tensorflow saver
     '''
-    def __init__(self, model, chkp_dir, nb_step_chkp=100):
+    def __init__(self, model, chkp_dir, nb_step_chkp=100, max_to_keep=10, keep_checkpoint_every_n_hours=1):
         super(Callback, self).__init__()
         if K._BACKEND == 'tensorflow':
             import tensorflow as tf
-            self.saver = tf.train.Saver(var_list=None)
+            self.saver = tf.train.Saver(var_list=None, max_to_keep=max_to_keep, keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours)
         else:
             self.saver = None
 
@@ -82,7 +68,7 @@ class ModelCheckpointBatch(Callback):
     def on_train_end(self, logs={}):
         # When the freeze script will ne more stable, we can remove the global_step var
         # export_model(self.model, self.chkp_dir, saver=self.saver)
-        export_model(self.model, self.chkp_dir, saver=self.saver, global_step=self.global_step)        
+        export_model(self.model, self.chkp_dir, saver=self.saver)        
 
 class TensorBoardBatch(Callback):
     ''' Tensorboard basic visualizations.
@@ -112,70 +98,120 @@ class TensorBoardBatch(Callback):
             become quite large when write_graph is set to True.
     '''
 
-    def __init__(self, model, log_dir, histogram_freq=100, write_graph=False):
+    def __init__(self, model, log_dir, histogram_freq=0, image_freq=0, audio_freq=0, write_graph=False):
         super(Callback, self).__init__()
         if K._BACKEND != 'tensorflow':
             raise Exception('TensorBoardBatch callback only works '
                             'with the TensorFlow backend.')
+        import tensorflow as tf
+        self.tf = tf
+        import keras.backend.tensorflow_backend as KTF
+        self.KTF = KTF
+
         self.log_dir = log_dir
         self.histogram_freq = histogram_freq
-        self.merged = None
+        self.image_freq = image_freq
+        self.audio_freq = audio_freq
+        self.histograms = None
+        self.images = None
         self.write_graph = write_graph
-
-        import tensorflow as tf
-        import keras.backend.tensorflow_backend as KTF
+        self.iter = 0
+        self.scalars = []
+        self.images = []
+        self.audios = []
 
         self.model = model
         self.sess = KTF.get_session()
-        if self.histogram_freq and self.merged is None:
+
+        if self.histogram_freq != 0:
             layers = self.model.layers
             for layer in layers:
+                if hasattr(layer, 'name'):
+                    layer_name = layer.name
+                else:
+                    layer_name = layer
+
                 if hasattr(layer, 'W'):
-                    tf.histogram_summary('{}_W'.format(layer), layer.W)
+                    name = '{}_W'.format(layer_name)
+                    tf.histogram_summary(name, layer.W, collections=['histograms'])
                 if hasattr(layer, 'b'):
-                    tf.histogram_summary('{}_b'.format(layer), layer.b)
+                    name = '{}_b'.format(layer_name)
+                    tf.histogram_summary(name, layer.b, collections=['histograms'])
                 if hasattr(layer, 'output'):
-                    tf.histogram_summary('{}_out'.format(layer),
-                                         layer.output)
-        self.merged = tf.merge_all_summaries()
+                    name = '{}_out'.format(layer_name)
+                    tf.histogram_summary(name, layer.output, collections=['histograms'])
+        
+        if self.image_freq != 0:
+            tf.image_summary('input', self.model.input, max_images=1, collections=['images'])
+            tf.image_summary('output', self.model.output, max_images=1, collections=['images'])
+
+        if self.audio_freq != 0:
+            tf.audio_summary('input', self.model.input, max_outputs=1, collections=['audios'])
+            tf.audio_summary('output', self.model.output, max_outputs=1, collections=['audios'])
+
         if self.write_graph:
-            if tf.__version__ >= '0.8.0':
-                self.writer = tf.train.SummaryWriter(self.log_dir,
-                                                     self.sess.graph)
+            if self.tf.__version__ >= '0.8.0':
+                self.writer = self.tf.train.SummaryWriter(self.log_dir, self.sess.graph)
             else:
-                self.writer = tf.train.SummaryWriter(self.log_dir,
-                                                     self.sess.graph_def)
+                self.writer = self.tf.train.SummaryWriter(self.log_dir, self.sess.graph_def)
         else:
-            self.writer = tf.train.SummaryWriter(self.log_dir)
+            self.writer = self.tf.train.SummaryWriter(self.log_dir)
 
     def _set_model(self, model):
         return
-        
-    def on_batch_end(self, batch, logs={}):
-        import tensorflow as tf
 
-        if batch % self.histogram_freq == 0:
-            if self.model.validation_data and self.histogram_freq:
-                # TODO: implement batched calls to sess.run
-                # (current call will likely go OOM on GPU)
-                if self.model.uses_learning_phase:
-                    cut_v_data = len(self.model.inputs)
-                    val_data = self.model.validation_data[:cut_v_data] + [0]
-                    tensors = self.model.inputs + [K.learning_phase()]
-                else:
-                    val_data = self.model.validation_data
-                    tensors = self.model.inputs
-                feed_dict = dict(zip(tensors, val_data))
-                result = self.sess.run([self.merged], feed_dict=feed_dict)
-                summary_str = result[0]
-                self.writer.add_summary(summary_str, batch)
+    def on_train_begin(self, logs):
+        self.histograms = self.tf.merge_all_summaries('histograms')
+        self.images = self.tf.merge_all_summaries('images')
+        self.audios = self.tf.merge_all_summaries('audios')
 
+    def on_batch_end(self, batch, logs):
         for name, value in logs.items():
             if name in ['batch', 'size']:
                 continue
-            summary = tf.Summary()
-            summary_value = summary.value.add()
-            summary_value.simple_value = float(value)
-            summary_value.tag = name
-            self.writer.add_summary(summary, batch)
+            summary = self.tf.Summary(value=[
+                self.tf.Summary.Value(
+                    tag=name, 
+                    simple_value=float(value)
+                )]
+            )
+            self.writer.add_summary(summary, self.iter)
+
+        for name, value in self.scalars:
+            summary = self.tf.Summary(value=[
+                self.tf.Summary.Value(
+                    tag=name, 
+                    simple_value=float(K.get_value(value))
+                )]
+            )
+            self.writer.add_summary(summary, self.iter)
+
+        if hasattr(self.model, 'validation_data') and self.model.validation_data:
+            if self.model.uses_learning_phase:
+                cut_v_data = len(self.model.inputs)
+                val_data = self.model.validation_data[:cut_v_data] + [0]
+                tensors = self.model.inputs + [K.learning_phase()]
+            else:
+                val_data = self.model.validation_data
+                tensors = self.model.inputs
+            self.feed_dict = dict(zip(tensors, val_data))
+
+            if self.image_freq > 0 and batch % self.image_freq == 0:
+                result = self.sess.run([self.images], feed_dict=self.feed_dict)
+                summary_str = result[0]
+                self.writer.add_summary(summary_str, self.iter)
+
+            if self.audio_freq > 0 and batch % self.audio_freq == 0:
+                result = self.sess.run([self.audios], feed_dict=self.feed_dict)
+                summary_str = result[0]
+                self.writer.add_summary(summary_str, self.iter)
+
+            if self.histogram_freq > 0 and batch % self.histogram_freq == 0:
+                # TODO: implement batched calls to sess.run
+                # (current call will likely go OOM on GPU)
+                result = self.sess.run([self.histograms], feed_dict=self.feed_dict)
+                summary_str = result[0]
+                self.writer.add_summary(summary_str, self.iter)
+
         self.writer.flush()
+        self.iter += 1
