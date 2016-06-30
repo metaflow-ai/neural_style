@@ -84,7 +84,7 @@ if os.path.isfile(args.weights):
     st_model.load_weights(args.weights)
 
 print('Compiling model')
-adam = Adam(lr=args.lr, clipnorm=1.)
+adam = Adam(lr=args.lr, clipnorm=5.) # Clipping the norm avoid gradient explosion, no needs to suffocate it
 st_model.compile(adam, loss='mse') # loss=frobenius_error (this is not giving the same loss)
 
 print('Training model')

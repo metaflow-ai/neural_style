@@ -1,4 +1,5 @@
-import os, json, time, argparse
+import os, time, argparse, itertools
+import numpy as np
 
 from keras import backend as K
 from keras.models import Model
@@ -9,7 +10,7 @@ from keras.optimizers import Adam
 
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
-from utils.imutils import plot_losses, load_mean, get_image_list
+from utils.imutils import load_mean, get_image_list
 from utils.lossutils import (grams, grams_output_shape, total_variation_error_keras)
 from utils.general import mask_data, generate_data_from_image_list, import_model, get_shape
 from utils.callbacks import TensorBoardBatch, ModelCheckpointBatch, HistoryBatch
@@ -42,6 +43,7 @@ parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', '
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
 parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
 parser.add_argument('--nb_epoch', default=2, type=int, help='Number of epoch.')
+parser.add_argument('--max_epoch_size', default=-1, type=int, help='Max number of file to train on')
 args = parser.parse_args()
 
 dim_ordering = K.image_dim_ordering()
@@ -66,7 +68,7 @@ else:
 
 callbacks = []
 if K._BACKEND == "tensorflow":
-    tb = TensorBoardBatch(st_model, log_dir=prefixed_dir, histogram_freq=200, image_freq=201, write_graph=True)
+    tb = TensorBoardBatch(st_model, log_dir=prefixed_dir, histogram_freq=200, image_freq=51, write_graph=True)
     # We separate the image_freq and the histogram_freq just to avoid dumping everything at the same time
     callbacks.append(tb)
 callbacks.append(
@@ -111,6 +113,8 @@ true_content_f = K.function([tmp_vgg.input], content_output_layers)
 
 style_fullpath_prefix = paintings_dir + '/results/' + args.style.split('/')[-1].split('.')[0]
 train_image_list = get_image_list(train_dir)
+if args.max_epoch_size > 0:
+    train_image_list =train_image_list[:args.max_epoch_size]
 train_samples_per_epoch = len(train_image_list)
 train_generator = generate_data_from_image_list(
     train_image_list, (height, width), style_fullpath_prefix,
@@ -119,8 +123,8 @@ train_generator = generate_data_from_image_list(
     verbose=False
 )
 val_image_list = get_image_list(val_dir)
-if len(val_image_list) > 20:
-    val_image_list = val_image_list[:20]
+if len(val_image_list) > 10:
+    val_image_list = val_image_list[:10]
 nb_val_samples = len(val_image_list)
 val_generator = generate_data_from_image_list(
     val_image_list, (height, width), style_fullpath_prefix,
@@ -128,9 +132,15 @@ val_generator = generate_data_from_image_list(
     batch_size=args.batch_size, transform_f=true_content_f, preprocess_type='none',
     verbose=False
 )
-# Tensorboard callback doen't handle generator so far and we actually only need one image
-validation_data = val_generator.next()
-st_model.validation_data = validation_data[0]
+# Tensorboard callback doesn't handle generator so far and we actually only need
+# a few images to see the qualitative result
+validation_data = []
+train_generator, train_generator_copy = itertools.tee(train_generator)
+# results -> input_list -> first batch -> first image
+validation_data.append(train_generator_copy.next()[0][0][0]) 
+val_generator, val_generator_copy = itertools.tee(val_generator)
+validation_data.append(val_generator_copy.next()[0][0][0])
+st_model.validation_data = [validation_data]
 
 print('Iterating over hyper parameters')
 current_iter = 0
@@ -138,11 +148,11 @@ current_iter = 0
 # This is probably due to the fact that here we are looking at a new content picture each batch
 # while the style is always the same and so he can go down the style gradient much faster than the content one
 # which has more noise
-for alpha in [5e0]: 
+for alpha in [4e0]: 
     for beta in [1.]:
-        for gamma in [1e-4]:
+        for gamma in [1e-5]:
             print('Compiling model')
-            adam = Adam(lr=1e-03, clipnorm=1.)
+            adam = Adam(lr=1e-03, clipnorm=5.) # Clipping the norm avoid gradient explosion, no needs to suffocate it
             full_model.compile(optimizer=adam,
                 loss=[
                     # content

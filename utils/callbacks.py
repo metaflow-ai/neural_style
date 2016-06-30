@@ -68,7 +68,7 @@ class ModelCheckpointBatch(Callback):
     def on_train_end(self, logs={}):
         # When the freeze script will ne more stable, we can remove the global_step var
         # export_model(self.model, self.chkp_dir, saver=self.saver)
-        export_model(self.model, self.chkp_dir, saver=self.saver)        
+        export_model(self.model, self.chkp_dir, saver=self.saver, global_step=self.global_step)        
 
 class TensorBoardBatch(Callback):
     ''' Tensorboard basic visualizations.
@@ -142,8 +142,8 @@ class TensorBoardBatch(Callback):
                     tf.histogram_summary(name, layer.output, collections=['histograms'])
         
         if self.image_freq != 0:
-            tf.image_summary('input', self.model.input, max_images=1, collections=['images'])
-            tf.image_summary('output', self.model.output, max_images=1, collections=['images'])
+            tf.image_summary('input', self.model.input, max_images=2, collections=['images'])
+            tf.image_summary('output', self.model.output, max_images=2, collections=['images'])
 
         if self.audio_freq != 0:
             tf.audio_summary('input', self.model.input, max_outputs=1, collections=['audios'])
