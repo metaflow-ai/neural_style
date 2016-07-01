@@ -1,5 +1,4 @@
-import os, time, argparse, itertools
-import numpy as np
+import os, time, argparse
 
 from keras import backend as K
 from keras.models import Model
@@ -8,9 +7,9 @@ from keras.optimizers import Adam
 
 # from keras.utils.visualize_util import plot as plot_model
 
-from vgg19.model_headless import VGG_19_headless_5, get_layer_data
+from vgg19.model_headless import VGG_19_headless_4, get_layer_data
 
-from utils.imutils import load_mean, get_image_list
+from utils.imutils import load_mean, get_image_list, load_image
 from utils.lossutils import (grams, grams_output_shape, total_variation_error_keras)
 from utils.general import mask_data, generate_data_from_image_list, import_model, get_shape
 from utils.callbacks import TensorBoardBatch, ModelCheckpointBatch, HistoryBatch
@@ -80,7 +79,7 @@ callbacks.append(
 
 print('Loading VGG headless 5')
 modelWeights = "%s/%s-%s-%s%s" % (vgg19Dir,'vgg-19', dim_ordering, K._BACKEND, '_headless_5_weights.hdf5')
-vgg_model = VGG_19_headless_5(input_shape, modelWeights, trainable=False, pooling_type=args.pooling_type)
+vgg_model = VGG_19_headless_4(input_shape, modelWeights, trainable=False, pooling_type=args.pooling_type)
 layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
 style_layers = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_2']
 style_layers_mask = [name in style_layers for name in layers_names]
@@ -105,7 +104,7 @@ full_model = Model(input=[st_model.input], output=content_preds + style_preds + 
 # plot_model(vgg_model, to_file=results_dir + '/vgg_model.png', show_shapes=True)
 
 print('Loading the generator')
-tmp_vgg = VGG_19_headless_5(input_shape, modelWeights, trainable=False, pooling_type=args.pooling_type)
+tmp_vgg = VGG_19_headless_4(input_shape, modelWeights, trainable=False, pooling_type=args.pooling_type)
 layer_dict, layers_names = get_layer_data(tmp_vgg, 'conv_')
 content_layers = ['conv_3_2']
 content_output_layers = [layer_dict[lc_name].output for lc_name in content_layers]
@@ -135,11 +134,8 @@ val_generator = generate_data_from_image_list(
 # Tensorboard callback doesn't handle generator so far and we actually only need
 # a few images to see the qualitative result
 validation_data = []
-train_generator, train_generator_copy = itertools.tee(train_generator)
-# results -> input_list -> first batch -> first image
-validation_data.append(train_generator_copy.next()[0][0][0]) 
-val_generator, val_generator_copy = itertools.tee(val_generator)
-validation_data.append(val_generator_copy.next()[0][0][0])
+validation_data.append(load_image(train_image_list[0], size=(height, width), preprocess_type='none'))
+validation_data.append(load_image(val_image_list[0], size=(height, width), preprocess_type='none'))
 st_model.validation_data = [validation_data]
 
 print('Iterating over hyper parameters')
