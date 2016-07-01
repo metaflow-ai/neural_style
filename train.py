@@ -77,8 +77,8 @@ callbacks.append(
     HistoryBatch()
 )
 
-print('Loading VGG headless 5')
-modelWeights = "%s/%s-%s-%s%s" % (vgg19Dir,'vgg-19', dim_ordering, K._BACKEND, '_headless_5_weights.hdf5')
+print('Loading VGG headless 4')
+modelWeights = "%s/%s-%s-%s%s" % (vgg19Dir,'vgg-19', dim_ordering, K._BACKEND, '_headless_4_weights.hdf5')
 vgg_model = VGG_19_headless_4(input_shape, modelWeights, trainable=False, pooling_type=args.pooling_type)
 layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
 style_layers = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_2']

@@ -75,7 +75,7 @@ def st_conv_transpose(input_shape, weights_path=None, mode=0, nb_res_layer=4):
 
     return model
 
-# Moving from 6 to 12 layers doesn't seem to improve much
+# Moving from 4 to 12 layers doesn't seem to improve much
 def st_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
@@ -397,7 +397,7 @@ def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_laye
         #Reverse bottleneck
         out = Convolution2D(128, 1, 1, dim_ordering=K.image_dim_ordering(), 
             init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
-        out = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(c)
+        out = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(out)
         last_out = merge([last_out, out], mode='sum')
 
     # Adding a convolution here helps greatly
@@ -408,6 +408,53 @@ def st_atrous_conv_inception(input_shape, weights_path=None, mode=0, nb_res_laye
     ct = ConvolutionTranspose2D(3, 5, 5, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(4, 4), border_mode='same', activation='linear')(last_out)
     out = ScaledSigmoid(scaling=255., name="output_node")(ct)
+
+    model = Model(input=[input], output=[out])
+
+    if weights_path:
+        model.load_weights(weights_path)
+
+    return model
+
+def st_atrous_conv_inception_simple(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+    if K.image_dim_ordering() == 'tf':
+        channel_axis = 3
+    else:
+        channel_axis = 1
+
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
+    # Downsampling
+    out = Convolution2D(16, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(2, 2), border_mode='same', activation='relu')(input)
+    out = Convolution2D(64, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(2, 2),  border_mode='same', activation='relu')(out)
+    out = ATrousConvolution2D(128, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', border_mode='same', activation='linear')(out)
+    last_out = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(out)
+
+    for i in range(nb_res_layer):
+        #bottleneck archi
+        out = Convolution2D(32, 1, 1, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='relu')(last_out)
+
+        # Convolutions
+        out = ATrousConvolution2D(32, 3, 3, rate=2, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', border_mode='same', activation='relu')(out)
+        out = Convolution2D(32, 3, 3, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='relu')(out)
+
+        #Reverse bottleneck
+        out = Convolution2D(128, 1, 1, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
+        out = BatchNormalization(mode=mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(out)
+        last_out = merge([last_out, out], mode='sum')
+
+    # Separating this convt in two doesn't add any improvement
+    out = ConvolutionTranspose2D(32, 5, 5, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(4, 4), border_mode='same', activation='linear')(last_out)
+    out = Convolution2D(3, 7, 7, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
+    out = ScaledSigmoid(scaling=255., name="output_node")(out)
 
     model = Model(input=[input], output=[out])
 
