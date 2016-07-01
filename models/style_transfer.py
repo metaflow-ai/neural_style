@@ -450,9 +450,9 @@ def st_atrous_conv_inception_simple(input_shape, weights_path=None, mode=0, nb_r
         last_out = merge([last_out, out], mode='sum')
 
     # Separating this convt in two doesn't add any improvement
-    out = ConvolutionTranspose2D(32, 5, 5, dim_ordering=K.image_dim_ordering(), 
+    out = ConvolutionTranspose2D(16, 5, 5, dim_ordering=K.image_dim_ordering(), 
         init='he_normal', subsample=(4, 4), border_mode='same', activation='linear')(last_out)
-    out = Convolution2D(3, 7, 7, dim_ordering=K.image_dim_ordering(), 
+    out = Convolution2D(3, 9, 9, dim_ordering=K.image_dim_ordering(), 
             init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
     out = ScaledSigmoid(scaling=255., name="output_node")(out)
 
