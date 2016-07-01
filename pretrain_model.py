@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(
                 'the content of an image and the style of another.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument('--model', default='inception', type=str, choices=['transpose', 'inception', 'atrous', 'superresolution'], help='Load pretrained weights')
+parser.add_argument('--model', default='inception', type=str, choices=['transpose', 'inception', 'atrous', 'atrous_simple', 'superresolution'], help='Load pretrained weights')
 parser.add_argument('--training_mode', default='identity', type=str, choices=['identity', 'overfit'], help='Load pretrained weights')
 parser.add_argument('--weights', default='', type=str, help='Load pretrained weights')
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
