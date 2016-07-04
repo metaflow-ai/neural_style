@@ -83,7 +83,10 @@ vgg_model = VGG_19_headless_4(input_shape, modelWeights, trainable=False, poolin
 layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
 style_layers = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_2']
 style_layers_mask = [name in style_layers for name in layers_names]
-content_layers = ['conv_3_2']
+# About that, each time you have a pooling you hardly limiting the gradient flow upward
+# afte the > 2 layers, if you have a to do mini batchs and have a lot of noise
+# You won't be able to pick up the gradient to converge
+content_layers = ['conv_2_2']
 content_layers_mask = [name in content_layers for name in layers_names]
 
 print('Building full model')
@@ -106,7 +109,6 @@ full_model = Model(input=[st_model.input], output=content_preds + style_preds + 
 print('Loading the generator')
 tmp_vgg = VGG_19_headless_4(input_shape, modelWeights, trainable=False, pooling_type=args.pooling_type)
 layer_dict, layers_names = get_layer_data(tmp_vgg, 'conv_')
-content_layers = ['conv_3_2']
 content_output_layers = [layer_dict[lc_name].output for lc_name in content_layers]
 true_content_f = K.function([tmp_vgg.input], content_output_layers)
 
@@ -143,8 +145,8 @@ current_iter = 0
 # Alpha need to be a lot lower than in the gatys_paper
 # This is probably due to the fact that here we are looking at a new content picture each batch
 # while the style is always the same and so he can go down the style gradient much faster than the content one
-# which has more noise
-for alpha in [4e0]: 
+# which is  noisier
+for alpha in [12e0]: 
     for beta in [1.]:
         for gamma in [1e-5]:
             print('Compiling model')

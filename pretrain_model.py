@@ -4,9 +4,9 @@ from keras import backend as K
 from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
-from models.style_transfer import (st_conv_transpose, st_conv_inception_3,
-                        st_atrous_conv_inception, st_atrous_conv_inception_simple,
-                        st_atrous_conv_inception_superresolution)
+from models.style_transfer import (st_conv_transpose, st_conv_inception, st_conv_inception_3,
+                        st_conv_inception_4, st_atrous_conv_inception,
+                        st_conv_inception_4_superresolution)
 
 from utils.imutils import plot_losses, load_images, load_data, resize
 from utils.general import export_model
@@ -68,17 +68,19 @@ print('y_cv.shape', y_cv.shape)
 
 print('Loading model')
 if args.model == 'transpose':
-    st_model = st_conv_transpose(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+    st_model = st_conv_transpose(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception':
-    st_model = st_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+    st_model = st_conv_inception(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
+elif args.model == 'inception_3':
+    st_model = st_conv_inception_3(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
+elif args.model == 'inception_4':
+    st_model = st_conv_inception_4(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
 elif args.model == 'atrous':
-    st_model = st_atrous_conv_inception(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
-elif args.model == 'atrous_simple':
-    st_model = st_atrous_conv_inception_simple(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+    st_model = st_atrous_conv_inception(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
 elif args.model == 'superresolution':
     X = resize(X, (height/4, width/4))
     X_cv = resize(X_cv, (height/4, width/4))
-    st_model = st_atrous_conv_inception_superresolution(input_shape, mode=2, nb_res_layer=args.nb_res_layer) # th ordering, BGR
+    st_model = st_conv_inception_4_superresolution(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
 else:
     raise Exception('Model name %s not allowed , should not happen anyway' % args.model)
 
