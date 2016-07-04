@@ -5,7 +5,7 @@ from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
 from models.style_transfer import (st_conv_transpose, st_conv_inception, st_conv_inception_3,
-                        st_conv_inception_4, st_atrous_conv_inception,
+                        st_conv_inception_4, st_conv_inception_4_fast, st_atrous_conv_inception,
                         st_conv_inception_4_superresolution)
 
 from utils.imutils import plot_losses, load_images, load_data, resize
@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(
                 'the content of an image and the style of another.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument('--model', default='inception', type=str, choices=['transpose', 'inception', 'inception_3', 'inception_4', 'atrous', 'superresolution'], help='Load pretrained weights')
+parser.add_argument('--model', default='inception', type=str, choices=['transpose', 'inception', 'inception_3', 'inception_4', 'inception_4_fast', 'atrous', 'superresolution'], help='Load pretrained weights')
 parser.add_argument('--training_mode', default='identity', type=str, choices=['identity', 'overfit'], help='Load pretrained weights')
 parser.add_argument('--weights', default='', type=str, help='Load pretrained weights')
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
@@ -75,6 +75,8 @@ elif args.model == 'inception_3':
     st_model = st_conv_inception_3(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception_4':
     st_model = st_conv_inception_4(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
+elif args.model == 'inception_4_fast':
+    st_model = st_conv_inception_4_fast(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
 elif args.model == 'atrous':
     st_model = st_atrous_conv_inception(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
 elif args.model == 'superresolution':

@@ -146,7 +146,7 @@ current_iter = 0
 # This is probably due to the fact that here we are looking at a new content picture each batch
 # while the style is always the same and so he can go down the style gradient much faster than the content one
 # which is  noisier
-for alpha in [12e0]: 
+for alpha in [1e1]: 
     for beta in [1.]:
         for gamma in [1e-5]:
             print('Compiling model')

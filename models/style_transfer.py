@@ -4,9 +4,9 @@ sys.path.append(dir + '/..')
 
 from keras import backend as K
 from keras.engine import merge
-from keras.layers.convolutional import (Convolution2D, MaxPooling2D, AveragePooling2D, UpSampling2D)
+from keras.layers.convolutional import (Convolution2D, MaxPooling2D, AveragePooling2D)
 from keras.layers.normalization import BatchNormalization
-from keras.layers.advanced_activations import PReLU, ELU
+from keras.layers.advanced_activations import LeakyReLU, PReLU, ELU
 from keras.layers.core import Activation
 from keras.layers import Input
 from keras.models import Model
@@ -399,6 +399,44 @@ def st_conv_inception_4_superresolution(input_shape, weights_path=None, mode=0, 
         model.load_weights(weights_path)
 
     return model
+
+def st_conv_inception_4_fast(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+    if K.image_dim_ordering() == 'tf':
+        channel_axis = 3
+    else:
+        channel_axis = 1
+
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
+    # Downsampling
+    c = Convolution2D(13, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(input)
+    a = PReLU()(c) 
+    p = AveragePooling2D(pool_size=(2, 2), dim_ordering=K.image_dim_ordering(), border_mode='same')(input)
+    m = merge([a, p], mode='concat', concat_axis=channel_axis) # 16 layers
+
+    c = Convolution2D(48, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(2, 2),  border_mode='same', activation='linear')(m)
+    a = PReLU()(c)
+    p = AveragePooling2D(pool_size=(2, 2), dim_ordering=K.image_dim_ordering(), border_mode='same')(m)
+    last_out = merge([a, p], mode='concat', concat_axis=channel_axis) # 64 layers
+
+
+    for i in range(nb_res_layer):
+        out = inception_layer_fast(last_out, K.image_dim_ordering(), channel_axis, mode)
+        last_out = merge([last_out, out], mode='sum')
+
+    out = Convolution2D(64, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(last_out)
+    out = ConvolutionTranspose2D(3, 5, 5, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(4, 4), border_mode='same', activation='linear')(out)
+    out = ScaledSigmoid(scaling=255., name="output_node")(out)
+
+    model = Model(input=[input], output=[out])
+
+    if weights_path:
+        model.load_weights(weights_path)
+
+    return model
     
 def naive_inception_layer(input, do, channel_axis, batchnorm_mode):
     out = Convolution2D(32, 1, 1, dim_ordering=do, 
@@ -464,6 +502,44 @@ def inception_layer(input, do, channel_axis, batchnorm_mode):
 
     return m
 
+def inception_layer_fast(input, do, channel_axis, batchnorm_mode):
+    # Branch 1
+    out = Convolution2D(16, 1, 1, dim_ordering=do, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
+    out = BatchNormalization(mode=batchnorm_mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(out)
+    out1 = Activation('relu')(out)
+
+    # Branch 2
+    out = Convolution2D(16, 1, 1, dim_ordering=do, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
+    out = Convolution2D(16, 3, 3, dim_ordering=do, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
+    out = BatchNormalization(mode=batchnorm_mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(out)
+    out2 = Activation('relu')(out)
+
+    # Branch 3
+    out = Convolution2D(16, 1, 1, dim_ordering=do, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
+    out = Convolution2D(16, 5, 5, dim_ordering=do, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
+    out = BatchNormalization(mode=batchnorm_mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(out)
+    out3 = Activation('relu')(out)
+
+    # Branch 4
+    out = Convolution2D(16, 1, 1, dim_ordering=do, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
+    out = Convolution2D(16, 3, 3, dim_ordering=do, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
+    out = Convolution2D(16, 3, 3, dim_ordering=do, 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
+    out = BatchNormalization(mode=batchnorm_mode, axis=channel_axis, momentum=0.9, gamma_init='he_normal')(out)
+    out4 = Activation('relu')(out)
+
+
+    m = merge([out1, out2, out3, out4], mode='concat', concat_axis=channel_axis) # 16 layers
+
+    return m
+
 if __name__ == "__main__":
     from keras.utils.visualize_util import plot as plot_model
 
@@ -481,9 +557,9 @@ if __name__ == "__main__":
     results_dir = dir + '/data/st'
 
 
-    # model = st_conv_transpose(input_shape=input_shape, nb_res_layer=2)
-    # export_model(model, results_dir + '/st_conv_transpose')
-    # plot_model(model, results_dir + '/st_conv_transpose/model.png', True)
+    model = st_conv_transpose(input_shape=input_shape, nb_res_layer=2)
+    export_model(model, results_dir + '/st_conv_transpose')
+    plot_model(model, results_dir + '/st_conv_transpose/model.png', True)
 
     model = st_conv_inception(input_shape=input_shape, nb_res_layer=2)
     export_model(model, results_dir + '/st_conv_inception')
@@ -501,15 +577,19 @@ if __name__ == "__main__":
     export_model(model, results_dir + '/st_conv_inception_4')
     plot_model(model, results_dir + '/st_conv_inception_4/model.png', True)
 
+    model = st_conv_inception_4_fast(input_shape=input_shape, nb_res_layer=2)
+    export_model(model, results_dir + '/st_conv_inception_4_fast')
+    plot_model(model, results_dir + '/st_conv_inception_4_fast/model.png', True)
+
     # model = st_atrous_conv_inception(input_shape=input_shape, nb_res_layer=2)
     # export_model(model, results_dir + '/st_atrous_conv_inception')
     # plot_model(model, results_dir + '/st_atrous_conv_inception/model.png', True)
 
-    if K.image_dim_ordering() == 'th':
-        input_shape = (3, 600/4, 600/4)
-    else:
-        input_shape = (600/4, 600/4, 3)
-    model = st_conv_inception_4_superresolution(input_shape=input_shape, nb_res_layer=2)
-    export_model(model, results_dir + '/st_conv_inception_4_superresolution')
-    plot_model(model, results_dir + '/st_conv_inception_4_superresolution/model.png', True)
+    # if K.image_dim_ordering() == 'th':
+    #     input_shape = (3, 600/4, 600/4)
+    # else:
+    #     input_shape = (600/4, 600/4, 3)
+    # model = st_conv_inception_4_superresolution(input_shape=input_shape, nb_res_layer=2)
+    # export_model(model, results_dir + '/st_conv_inception_4_superresolution')
+    # plot_model(model, results_dir + '/st_conv_inception_4_superresolution/model.png', True)
 
