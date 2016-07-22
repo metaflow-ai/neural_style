@@ -134,9 +134,9 @@ def get_shape(x):
 def mask_data(data, selector):
     return [d for d, s in zip(data, selector) if s]
 
-def generate_data_from_image_list(image_list, size, style_fullpath_pefix, input_len=1, output_len=1, batch_size=4, transform_f=None, preprocess_type='none', verbose=False):
+def generate_data_from_image_list(image_list, size, style_fullpath_prefix, input_len=1, output_len=1, batch_size=4, transform_f=None, preprocess_type='none', verbose=False):
     if transform_f != None:
-        file = h5py.File(style_fullpath_pefix + '_' + str(size[0]) + '.hdf5', 'r')
+        file = h5py.File(style_fullpath_prefix + '_' + str(size[0]) + '.hdf5', 'r')
         y_style1 = np.array(file.get('conv_1_2'))
         y_style2 = np.array(file.get('conv_2_2'))
         y_style3 = np.array(file.get('conv_3_4'))
