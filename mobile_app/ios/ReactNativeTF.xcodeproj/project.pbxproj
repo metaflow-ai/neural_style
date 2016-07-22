@@ -716,6 +716,7 @@
 					"-lc++",
 					"-ObjC",
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.explee.ReactNativeTF;
 				PRODUCT_NAME = ReactNativeTF;
 			};
 			name = Debug;
@@ -748,6 +749,7 @@
 					"-lc++",
 					"-ObjC",
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.explee.ReactNativeTF;
 				PRODUCT_NAME = ReactNativeTF;
 			};
 			name = Release;
