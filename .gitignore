@@ -96,7 +96,7 @@ mobile_app/*.mode2v3
 mobile_app/!default.mode2v3
 mobile_app/*.perspectivev3
 mobile_app/!default.perspectivev3
-mobile_app/xcuserdata
+mobile_app/**/xcuserdata/
 mobile_app/*.xccheckout
 mobile_app/*.moved-aside
 mobile_app/DerivedData
