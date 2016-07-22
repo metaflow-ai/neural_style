@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "7A45C7EE3431A70E12FBADF5D728BB6CB0D9F905",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "9F4E48B0E71B018CFB650DCC9B8A187E5C305294" : 0,
+    "7A45C7EE3431A70E12FBADF5D728BB6CB0D9F905" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "FC4E5238-2F79-46A8-91A5-0A781CC03448",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "9F4E48B0E71B018CFB650DCC9B8A187E5C305294" : "",
+    "7A45C7EE3431A70E12FBADF5D728BB6CB0D9F905" : "mobile_app\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "ReactNativeTF",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "ios\/ReactNativeTF.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/Explee\/ReactNativeTF.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "7A45C7EE3431A70E12FBADF5D728BB6CB0D9F905"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/Explee\/deepback.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "9F4E48B0E71B018CFB650DCC9B8A187E5C305294"
+    }
+  ]
+}
