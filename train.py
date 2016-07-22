@@ -113,8 +113,10 @@ true_content_f = K.function([tmp_vgg.input], content_output_layers)
 style_fullpath_prefix = paintings_dir + '/results/' + args.style.split('/')[-1].split('.')[0]
 train_image_list = get_image_list(train_dir)
 if args.max_epoch_size > 0:
-    train_image_list =train_image_list[:args.max_epoch_size]
+    train_image_list = train_image_list[:args.max_epoch_size]
 train_samples_per_epoch = len(train_image_list)
+if not os.path.isfile(style_fullpath_prefix + '_' + str(height) + '.hdf5'): 
+    raise Exception('You must preprocess the paintings (python data/prepare_data.py) before running this script')
 train_generator = generate_data_from_image_list(
     train_image_list, (height, width), style_fullpath_prefix,
     input_len=1, output_len=6,
