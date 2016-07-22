@@ -11,7 +11,8 @@ This folder is an example of how to use Tensorflow with iOS by running a neural-
 cd tensorflow/tensorflow/contrib/makefile
 ./build_all_ios.sh
 cp gen/lib/libtensorflow-core.a ../../../../deepback/mobile_app/lib/
-cp gen/protobuf_ios/lib/libprotobuf-lite.a gen/protobuf_ios/lib/libprotobuf.a ../../../../deepback/mobile_app/lib/
+cp gen/protobuf_ios/lib/libprotobuf-lite.a ../../../../deepback/mobile_app/lib/
+cp gen/protobuf_ios/lib/libprotobuf.a ../../../../deepback/mobile_app/lib/
 ```
 
 If you have any trouble with the Tensorflow's iOS build, please check the official doc here: https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/makefile/README.md#ios
