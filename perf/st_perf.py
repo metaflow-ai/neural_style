@@ -55,7 +55,7 @@ for idx, absolute_model_dir in enumerate(subdirs):
 
     print('Timing looping')
     start = time.clock()
-    num_loop = 30
+    num_loop = X_test.shape[0]
     for i in range(num_loop):
         if len(re.findall('superresolution', absolute_model_dir)):
             im = resize(X_test[0], (args.image_size/4, args.image_size/4))

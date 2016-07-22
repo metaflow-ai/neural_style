@@ -32,8 +32,6 @@ overfit_dir = dataDir + '/overfit'
 paintings_dir = dataDir + '/paintings'
 
 parser = argparse.ArgumentParser(
-    description='Neural artistic style. Generates an image by combining '
-                'the content of an image and the style of another.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_scream.jpg', type=str, help='Style image.')
@@ -83,8 +81,8 @@ vgg_model = VGG_19_headless_4(input_shape, modelWeights, trainable=False, poolin
 layer_dict, layers_names = get_layer_data(vgg_model, 'conv_')
 style_layers = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_2']
 style_layers_mask = [name in style_layers for name in layers_names]
-# About that, each time you have a pooling you hardly limiting the gradient flow upward
-# afte the > 2 layers, if you have a to do mini batchs and have a lot of noise
+# About that: each time you have a pooling you hardly limiting the gradient flow upward
+# after the > 2 layers, if you have a to do mini batchs and have a lot of noise
 # You won't be able to pick up the gradient to converge
 content_layers = ['conv_2_2']
 content_layers_mask = [name in content_layers for name in layers_names]

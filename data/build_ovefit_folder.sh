@@ -1,9 +1,10 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SIZE=600
 OVERFITDIR=$DIR/overfit_$SIZE 
-OUTPUTDIR=$OVERFITDIR/results
+OUTPUTDIR=$OVERFITDIR/cv
 
 mkdir -p $OVERFITDIR
+mkdir -p $OUTPUTDIR
 
 for file in $(ls $DIR/val | grep jpg | head -200)
 do

@@ -19,7 +19,7 @@ else:
 dir = os.path.dirname(os.path.realpath(__file__))
 dataDir = dir + '/data'
 trainDir = dataDir + '/train'
-overfitDir = dataDir + '/overfit'
+overfitDir = dataDir + '/overfit_600'
 
 parser = argparse.ArgumentParser(
     description='Neural artistic style. Generates an image by combining '
@@ -67,18 +67,20 @@ print('X_cv.shape', X_cv.shape)
 print('y_cv.shape', y_cv.shape)
 
 print('Loading model')
+# mode 1 should be possible but keras is complaining in the train.py file
+# it doesn't like the idea that i will call later `output = pretrain_model(input)`
 if args.model == 'transpose':
-    st_model = st_conv_transpose(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
+    st_model = st_conv_transpose(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception':
-    st_model = st_conv_inception(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
+    st_model = st_conv_inception(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception_3':
-    st_model = st_conv_inception_3(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
+    st_model = st_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception_4':
-    st_model = st_conv_inception_4(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
+    st_model = st_conv_inception_4(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception_4_fast':
-    st_model = st_conv_inception_4_fast(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
+    st_model = st_conv_inception_4_fast(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'atrous':
-    st_model = st_atrous_conv_inception(input_shape, mode=1, nb_res_layer=args.nb_res_layer)
+    st_model = st_atrous_conv_inception(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'superresolution':
     X = resize(X, (height/4, width/4))
     X_cv = resize(X_cv, (height/4, width/4))

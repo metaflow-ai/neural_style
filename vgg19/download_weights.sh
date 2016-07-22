@@ -1,3 +1,5 @@
-wget --no-check-certificate 'https://docs.google.com/uc?export=download&confirm=USJG&id=0Bz7KyqmuGsilZ2RVeVhKY0FyRmc' -O vgg-19_weights.hdf5
-KERAS_BACKEND="theano" python vgg19/dump_headless_weights.py
-python vgg19/dump_headless_weights.py
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+wget --no-check-certificate 'https://s3-eu-west-1.amazonaws.com/explee-deep-learning/vgg19_weights.h5' -O $DIR/vgg-19_weights.hdf5
+KERAS_BACKEND="theano" python $DIR/dump_headless_weights.py
+python $DIR/dump_headless_weights.py
