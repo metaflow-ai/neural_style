@@ -10,6 +10,7 @@ You potentially can move on Theano backend for Keras, ut you night have to tweak
 ## Architecture
 - **data:** Holds all images input/outputs
 - **docker:** Holds the dockerfile used to run those experiments (see the docker seciont for more information)
+- **mobile_app:** Holds all the mobile files and README to make your tensorflow model work on IOS
 - **models:** Holds models/layers python python files + models architecture/weights output files
 - **perf:** Holds very simple perf scripts to have an idea on how much you loose when you go from the titan X to an iphone 6s...
 - **tests:** Holds some tests sherlocks
@@ -38,7 +39,7 @@ nvidia-docker run -it -d -p 6006:6006 -v /my/aboslute/path/to/deepback:/root/dee
 ## I want to create deep art
 **First:** Download data! (Be aware, this will download around 20GB of data...)
 ```bash
-# From root directory
+# From data directory
 ./data/download_images.sh
 ```
 
@@ -72,6 +73,24 @@ python train.py --model_dir models/path/to/model
 ./predict.sh path/to/my/model
 ```
 **Amen**
+
+## Making it happen in your Iphone:
+See the [Mobile Readme](mobile_app)
+
+## Tensorboard
+Tensorboard feature is built-in only in the `train.py` file.
+
+While you are training our model, you can see in real-time your loss evolution and intermediate images result (train/cross val):
+```bash
+docker exec -it my-nvidia-docker-name bash
+tensorboard --logdir /path/to/my/parent/models/folder --reload_interval 20
+# If you launch tensorbaord in an already populated folder, it might take time before it can 
+# squash all the data
+```
+Access your board: http://my-dns.com:6006 and get something like that:
+![Tensorboard](screenshot-tensorboard.png)
+
+Tensorboard doc [here](https://www.tensorflow.org/versions/r0.9/how_tos/summaries_and_tensorboard/index.html)
 
 # Other stuffs
 ### Using ffmpeg to create unstable deep art videos
