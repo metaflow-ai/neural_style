@@ -1,11 +1,6 @@
 import os, argparse
 
 from keras import backend as K
-if K._BACKEND == 'tensorflow':
-    import tensorflow as tf
-    saver = tf.train.Saver()
-else:
-    saver = None
 
 from utils.general import export_model, import_model
 from models.layers import custom_objects
@@ -25,6 +20,12 @@ args.model_dir
 if not os.path.isdir(args.model_dir): 
     raise Exception("The model_dir is not a directory")
 model = import_model(args.model_dir, should_convert=False, custom_objects=custom_objects)
-print(model.input.name, model.output.name)
+print('Model input node name: %s' % model.input.name)
+print('Model output node name: %s' % model.output.name)
 
-export_model(model, dir + "/../models/data/output", saver=saver)
+if K._BACKEND == 'tensorflow':
+    import tensorflow as tf
+    saver = tf.train.Saver()
+else:
+    saver = None
+export_model(model, dir + "/models/data/output", saver=saver)
