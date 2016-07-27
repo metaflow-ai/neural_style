@@ -16,7 +16,6 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--model_dir', type=str, help='Model absolute directory')
 args = parser.parse_args()
 
-args.model_dir
 if not os.path.isdir(args.model_dir): 
     raise Exception("The model_dir is not a directory")
 model = import_model(args.model_dir, should_convert=False, custom_objects=custom_objects)
@@ -28,4 +27,4 @@ if K._BACKEND == 'tensorflow':
     saver = tf.train.Saver()
 else:
     saver = None
-export_model(model, dir + "/models/data/output", saver=saver)
+export_model(model, args.model_dir, saver=saver)
