@@ -62,8 +62,6 @@ print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
 
-layer_weights = json.load(open(dataDir + '/output/vgg19/reconstruction/layer_weights.json', 'r'))
-
 print('Building white noise images')
 input_data = create_noise_tensor(height, width, channels)
 
@@ -84,8 +82,8 @@ for idx_content, lc_name in enumerate(layers_names):
         loss_style = frobenius_error(grams(y_style), grams(out_style))
         loss_content = frobenius_error(y_content, out_content)
 
-        lc_weight = layer_weights[lc_name]['content']['mean']
-        ls_weight = layer_weights[ls_name]['style']['mean']
+        lc_weight = 1.
+        ls_weight = 1.
         print("lc_weight: %f, ls_weight: %f" % (lc_weight, ls_weight))
 
         print('Compiling VGG headless 5 for content ' + lc_name + ' and style ' + ls_name)

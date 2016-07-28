@@ -38,7 +38,7 @@ parser.add_argument('--style', default=dataDir + '/paintings/edvard_munch-the_sc
 parser.add_argument('--model_dir', default='', type=str, help='Load pretrained model')
 parser.add_argument('--pooling_type', default='avg', type=str, choices=['max', 'avg'], help='VGG pooling type.')
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
-parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
+parser.add_argument('--image_size', default=256, type=int, help='Input image size.')
 parser.add_argument('--nb_epoch', default=2, type=int, help='Number of epoch.')
 parser.add_argument('--max_epoch_size', default=-1, type=int, help='Max number of file to train on')
 args = parser.parse_args()

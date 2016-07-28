@@ -56,6 +56,8 @@ nvidia-docker run -it -d -p 6006:6006 -v /my/aboslute/path/to/deepback:/root/dee
 ```
 
 **Fourth:** Pretrain models
+
+*If you only want to initiliase a model weights, you can do it by setting the --nb_epoch parameter to 0 manually*
 ```bash
 # From root directory
 ./pretrain_model.sh
@@ -75,7 +77,14 @@ python train.py --model_dir models/path/to/model
 **Amen**
 
 ## Making it happen in your Iphone:
-See the [Mobile Readme](mobile_app)
+**First:** Export your trained model
+```
+python export_keras_model.py --model_dir models/path/to/model
+```
+
+**Second:** Copy the `pb` file into `mobile_app/data` directory
+
+**Third:** See the [Mobile Readme](mobile_app)
 
 ## Tensorboard
 Tensorboard feature is built-in only in the `train.py` file.

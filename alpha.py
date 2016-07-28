@@ -1,4 +1,4 @@
-import os, argparse, json
+import os, argparse
 import numpy as np
 
 from keras import backend as K
@@ -61,16 +61,13 @@ print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
 
-layer_weights = json.load(open(dataDir + '/output/vgg19/reconstruction/layer_weights.json', 'r'))
-
 print('Building white noise images')
 input_data = create_noise_tensor(height, width, channels)
 
 print('Using optimizer: ' + optimizer)
 current_iter = 1
-ls_name = lc_name = layers_names[3]
+ls_name = layers_names[3]
 lc_name = layers_names[3]
-
 for alpha in [1e0, 3e0, 6e0, 1e1, 3e1, 6e1, 1e2, 3e2, 6e2, 1e3, 3e3, 6e3]:
     print('Creating labels for content ' + lc_name + ' and style ' + ls_name)
     out_style = layer_dict[ls_name].output
@@ -84,8 +81,8 @@ for alpha in [1e0, 3e0, 6e0, 1e1, 3e1, 6e1, 1e2, 3e2, 6e2, 1e3, 3e3, 6e3]:
     loss_style = frobenius_error(grams(y_style), grams(out_style))
     loss_content = frobenius_error(y_content, out_content)
 
-    lc_weight = layer_weights[lc_name]['content']['mean']
-    ls_weight = layer_weights[ls_name]['style']['mean']
+    lc_weight = 1.
+    ls_weight = 1.
     print("lc_weight: %f, ls_weight: %f" % (lc_weight, ls_weight))
 
     print('Compiling VGG headless 5 for content ' + lc_name + ' and style ' + ls_name)

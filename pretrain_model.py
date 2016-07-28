@@ -4,8 +4,8 @@ from keras import backend as K
 from keras.optimizers import Adam
 # from keras.utils.visualize_util import plot as plot_model
 
-from models.style_transfer import (st_conv_transpose, st_conv_inception, st_conv_inception_3,
-                        st_conv_inception_4, st_conv_inception_4_fast, st_atrous_conv_inception,
+from models.style_transfer import (st_convt, st_conv_inception, st_convt_inception_prelu,
+                        st_conv_inception_4, st_conv_inception_4_fast,
                         st_conv_inception_4_superresolution)
 
 from utils.imutils import plot_losses, load_images, load_data, resize
@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(
                 'the content of an image and the style of another.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument('--model', default='inception', type=str, choices=['transpose', 'inception', 'inception_3', 'inception_4', 'inception_4_fast', 'atrous', 'superresolution'], help='Load pretrained weights')
+parser.add_argument('--model', default='inception', type=str, choices=['transpose', 'inception', 'inception_prelu', 'inception_4', 'inception_4_fast', 'superresolution'], help='Load pretrained weights')
 parser.add_argument('--training_mode', default='identity', type=str, choices=['identity', 'overfit'], help='Load pretrained weights')
 parser.add_argument('--weights', default='', type=str, help='Load pretrained weights')
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
@@ -70,11 +70,11 @@ print('Loading model')
 # mode 1 should be possible but keras is complaining in the train.py file
 # it doesn't like the idea that i will call later `output = pretrain_model(input)`
 if args.model == 'transpose':
-    st_model = st_conv_transpose(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
+    st_model = st_convt(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception':
     st_model = st_conv_inception(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
-elif args.model == 'inception_3':
-    st_model = st_conv_inception_3(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
+elif args.model == 'inception_prelu':
+    st_model = st_convt_inception_prelu(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception_4':
     st_model = st_conv_inception_4(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception_4_fast':
@@ -100,9 +100,10 @@ print('Training model')
 history = st_model.fit(X, y, batch_size=args.batch_size, nb_epoch=args.nb_epoch, verbose=1, validation_data=(X_cv, y_cv))
 losses = history.history
 
-print("Saving final data")
-prefixedDir = prefixed_dir = "%s/%s-%s-%s" % (results_dir, str(int(time.time())), K._BACKEND, dim_ordering)
-export_model(st_model, prefixedDir)
-with open(prefixedDir + '/losses.json', 'w') as outfile:
-    json.dump(losses, outfile)  
-plot_losses(losses, prefixedDir)
+if args.nb_epoch > 0:
+    print("Saving final data")
+    prefixedDir = prefixed_dir = "%s/%s-%s-%s" % (results_dir, str(int(time.time())), K._BACKEND, dim_ordering)
+    export_model(st_model, prefixedDir)
+    with open(prefixedDir + '/losses.json', 'w') as outfile:
+        json.dump(losses, outfile)  
+    plot_losses(losses, prefixedDir)

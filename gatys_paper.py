@@ -1,4 +1,4 @@
-import os, argparse, json, time, math
+import os, argparse, json, time
 import numpy as np
 
 from keras import backend as K
@@ -6,10 +6,9 @@ from keras import backend as K
 from vgg19.model_headless import VGG_19_headless_5, get_layer_data
 
 from utils.imutils import (load_image, load_images, create_noise_tensor, 
-                    deprocess, save_image, plot_losses, get_image_list)
+                    save_image, plot_losses, get_image_list)
 from utils.lossutils import (frobenius_error, total_variation_error, 
-                            grams, norm_l2, train_input
-                            )
+                            grams, norm_l2, train_input)
 
 if K._BACKEND == "tensorflow":
     K.set_image_dim_ordering('tf')
@@ -74,13 +73,10 @@ print('Layers found:' + ', '.join(layers_names))
 
 input_layer = model.input
 
-# This didn't lead to any improvement
-# layer_weights = json.load(open(dataDir + '/output/vgg19/reconstruction/layer_weights.json', 'r'))
-
 # Layer chosen thanks to the pre_analysis script
 # conv_5_* layers doesn't hold enough information to rebuild the structure of the content/style
 style_layers = ['conv_1_2', 'conv_2_2', 'conv_3_4', 'conv_4_2']
-content_layers = ['conv_3_2']
+content_layers = ['conv_2_2']
 style_output_layers = [layer_dict[ls_name].output for ls_name in style_layers]
 content_output_layers = [layer_dict[lc_name].output for lc_name in content_layers]
 
@@ -101,9 +97,10 @@ for idx, y_style in enumerate(y_styles):
 
 reg_TV = total_variation_error(input_layer, 2)
 
-alphas = [2e2]
+# Random sampling is seems to produce good results when iterating over hyperparameters
+alphas = np.random.uniform(1, 1e2, 10)
 betas = [1e0]
-gammas = [1e-4]
+gammas = np.random.uniform(1e-6, 1e-4 ,10)
 config = {
     'style': args.style,
     'pooling_type': args.pooling_type,
