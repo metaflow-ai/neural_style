@@ -1,17 +1,19 @@
-# DeepBack
+# A journey into Neural Style
+Hello!
 
-Hello traveler!
-
-This repository contains some work i did on the neural style algorithm to understand it better.
+This repository contains some work i did on the neural style algorithm to get a better sense of it.
 You can find all the different script to download, pretrain and train model. Using tensorflow, tensorboard and Keras.
 
-You potentially can move on Theano backend for Keras, ut you night have to tweak some stuff here and there then.
+You potentially can change the Keras backend to Theano, but you might have to tweak some stuff here and there then.
 
 ## Architecture
 - **data:** Holds all images input/outputs
-- **docker:** Holds the dockerfile used to run those experiments (see the docker seciont for more information)
+- **docker:** Holds the dockerfile used to run those experiments (see the docker section for more information)
 - **mobile_app:** Holds all the mobile files and README to make your tensorflow model work on IOS
 - **models:** Holds models/layers python python files + models architecture/weights output files
+  - **ATrouConvolution** layer for Keras
+  - **ConvolutionTranspose2D** layer for Keras
+  - **ScaledSigmoid** layer for Keras
 - **perf:** Holds very simple perf scripts to have an idea on how much you loose when you go from the titan X to an iphone 6s...
 - **tests:** Holds some tests sherlocks
 - **torch:** Holds some work done in torch, especially a keras neural net importer
@@ -101,6 +103,24 @@ Access your board: http://my-dns.com:6006 and get something like that:
 
 Tensorboard doc [here](https://www.tensorflow.org/versions/r0.9/how_tos/summaries_and_tensorboard/index.html)
 
+## Performance result
+**We can see a x703 time slower in a tensorflow CPU non-quantized implementation versus the AWS GPU**
+
+| Infrastructure | Time |
+|:--:|:--:|
+| tensorflow GPU K420 AWS: | ~0.0329s (batching) 0.026s (looping) | 
+| tensorflow mac os:  | 4.13s (batching) 3.31s (looping) |
+| tensorflow mac os simulateur:  | 5.86s (float32) 16.9 (quantized, this is weird) |
+| tensorflow iphone 6s CPU: | 18.30s (float32) |
+
+**Image size**: 600x600
+
+**batching**: all image are processed in parallel
+
+**looping**: one image at a time
+
+**quantized**: Using tensorflow quantization system, (Shouldn't be slower, probably needs a cleaner tf graph)
+
 # Other stuffs
 ### Using ffmpeg to create unstable deep art videos
 Resize: `ffmpeg -i test_video.MOV -filter:v "crop=600:600:70:400" out.mp4`
@@ -111,3 +131,4 @@ frames to video: `ffmpeg -framerate 30/1 -i %03d.jpeg -c:v libx264 -r 30 -pix_fm
 # Aknowledgment
 - Thanks to [@karpathy](https://github.com/karpathy), [@jcjohnson](https://github.com/jcjohnson) and [@leongatys](https://github.com/leongatys) for their work/code! :beers:
 - :+1: Tensorflow
+- :+1: Keras

@@ -90,7 +90,7 @@ def load_image(fullpath, size=(600, 600), preprocess_type='none', verbose=False,
 def get_y_fullpath(x_fullpath):
     splitted_fullpath = x_fullpath.split('/')
     filename = splitted_fullpath.pop()
-    y_fullpath = '/'.join(splitted_fullpath + ['results', filename])
+    y_fullpath = '/'.join(splitted_fullpath + [filename])
 
     return y_fullpath
 
