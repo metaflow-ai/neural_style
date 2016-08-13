@@ -1,0 +1,4 @@
+http://msvocds.blob.core.windows.net/coco2014/train2014.zip
+http://msvocds.blob.core.windows.net/coco2014/val2014.zip
+http://msvocds.blob.core.windows.net/coco2014/test2014.zip
+https://s3-eu-west-1.amazonaws.com/explee-deep-learning/paintings.zip
