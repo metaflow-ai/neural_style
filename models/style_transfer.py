@@ -14,6 +14,8 @@ from keras.models import Model
 from models.layers.ATrousConvolution2D import ATrousConvolution2D
 from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
 from models.layers.ScaledSigmoid import ScaledSigmoid
+from models.layers.PhaseShift import PhaseShift
+from models.layers.InstanceNormalization import InstanceNormalization
 
 from utils.general import export_model
 
@@ -371,37 +373,37 @@ def inception_layer(input, do, channel_axis, batchnorm_mode):
 
 def inception_layer_fast(input, do, channel_axis, batchnorm_mode, nb_layers):
     # Branch 1
-    out = Convolution2D(nb_layers/4, 1, 1, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 1, 1, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
     out = BatchNormalization(mode=batchnorm_mode, axis=channel_axis, momentum=0.5, gamma_init='he_normal')(out)
     out1 = Activation('relu')(out)
 
     # Branch 2
-    out = Convolution2D(nb_layers/4, 1, 1, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 1, 1, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
-    out = Convolution2D(nb_layers/4, 3, 3, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 3, 3, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
     out = BatchNormalization(mode=batchnorm_mode, axis=channel_axis, momentum=0.5, gamma_init='he_normal')(out)
     out2 = Activation('relu')(out)
 
     # Branch 3
-    out = Convolution2D(nb_layers/4, 1, 1, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 1, 1, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
-    out = Convolution2D(nb_layers/4, 3, 3, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 3, 3, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
-    out = Convolution2D(nb_layers/4, 3, 3, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 3, 3, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
     out = BatchNormalization(mode=batchnorm_mode, axis=channel_axis, momentum=0.5, gamma_init='he_normal')(out)
     out3 = Activation('relu')(out)
 
     # Branch 4
-    out = Convolution2D(nb_layers/4, 1, 1, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 1, 1, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
-    out = Convolution2D(nb_layers/4, 3, 3, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 3, 3, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
-    out = Convolution2D(nb_layers/4, 3, 3, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 3, 3, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
-    out = Convolution2D(nb_layers/4, 3, 3, dim_ordering=do, 
+    out = Convolution2D(int(nb_layers/4), 3, 3, dim_ordering=do, 
         init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(out)
     out = BatchNormalization(mode=batchnorm_mode, axis=channel_axis, momentum=0.5, gamma_init='he_normal')(out)
     out4 = Activation('relu')(out)
@@ -410,6 +412,49 @@ def inception_layer_fast(input, do, channel_axis, batchnorm_mode, nb_layers):
     m = BatchNormalization(mode=batchnorm_mode, axis=channel_axis, momentum=0.5, gamma_init='he_normal')(m)
 
     return m
+
+def fast_st_ps(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+    input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
+    # Downsampling
+    c11 = Convolution2D(32, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
+    bn11 = InstanceNormalization('inorm-1')(c11)
+    a11 = Activation('relu')(bn11)
+
+    c12 = Convolution2D(64, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(2, 2),  border_mode='same', activation='linear')(a11)
+    bn12 = InstanceNormalization('inorm-2')(c12)
+    a12 = Activation('relu')(bn12)
+
+    c13 = Convolution2D(128, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(a12)
+    bn13 = InstanceNormalization('inorm-3')(c13)
+    last_out = Activation('relu')(bn13)
+
+    for i in range(nb_res_layer):
+        c = Convolution2D(128, 3, 3, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(last_out)
+        bn = InstanceNormalization('inorm-res-%d' % i)(c)
+        a = Activation('relu')(bn)
+        c = Convolution2D(128, 3, 3, dim_ordering=K.image_dim_ordering(), 
+            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a)
+        bn = InstanceNormalization('inorm-5-%d' % i)(c)
+        # a = Activation('relu')(bn)
+        last_out = merge([last_out, bn], mode='sum')
+        # last_out = a
+
+    ct71 = Convolution2D(48, 3, 3, dim_ordering=K.image_dim_ordering(), 
+        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(last_out)
+    out = PhaseShift(ratio=4, color=True)(ct71)
+    out = ScaledSigmoid(scaling=255., name="output_node")(out)    
+
+    
+    model = Model(input=[input], output=[out])
+
+    if weights_path:
+        model.load_weights(weights_path)
+
+    return model
 
 if __name__ == "__main__":
     from keras.utils.visualize_util import plot as plot_model
@@ -427,30 +472,41 @@ if __name__ == "__main__":
     dir = os.path.dirname(os.path.realpath(__file__))
     results_dir = dir + '/data/st'
 
-    model = st_convt(input_shape=input_shape, nb_res_layer=2)
-    export_model(model, results_dir + '/st_convt')
-    plot_model(model, results_dir + '/st_convt/model.png', True)
+    # print('exporting st_convt')
+    # model = st_convt(input_shape=input_shape, nb_res_layer=2)
+    # export_model(model, results_dir + '/st_convt')
+    # plot_model(model, results_dir + '/st_convt/model.png', True)
 
-    model = st_conv_inception(input_shape=input_shape, nb_res_layer=2)
-    export_model(model, results_dir + '/st_conv_inception')
-    plot_model(model, results_dir + '/st_conv_inception/model.png', True)
+    # print('exporting st_conv_inception')
+    # model = st_conv_inception(input_shape=input_shape, nb_res_layer=2)
+    # export_model(model, results_dir + '/st_conv_inception')
+    # plot_model(model, results_dir + '/st_conv_inception/model.png', True)
 
-    model = st_convt_inception_prelu(input_shape=input_shape, nb_res_layer=2)
-    export_model(model, results_dir + '/st_convt_inception_prelu')
-    plot_model(model, results_dir + '/st_convt_inception_prelu/model.png', True)
+    # print('exporting st_convt_inception_prelu')
+    # model = st_convt_inception_prelu(input_shape=input_shape, nb_res_layer=2)
+    # export_model(model, results_dir + '/st_convt_inception_prelu')
+    # plot_model(model, results_dir + '/st_convt_inception_prelu/model.png', True)
 
-    model = st_conv_inception_4(input_shape=input_shape, nb_res_layer=2)
-    export_model(model, results_dir + '/st_conv_inception_4')
-    plot_model(model, results_dir + '/st_conv_inception_4/model.png', True)
+    # print('exporting st_conv_inception_4')
+    # model = st_conv_inception_4(input_shape=input_shape, nb_res_layer=2)
+    # export_model(model, results_dir + '/st_conv_inception_4')
+    # plot_model(model, results_dir + '/st_conv_inception_4/model.png', True)
 
-    model = st_conv_inception_4_fast(input_shape=input_shape, nb_res_layer=4)
-    export_model(model, results_dir + '/st_conv_inception_4_fast')
-    plot_model(model, results_dir + '/st_conv_inception_4_fast/model.png', True)
+    # print('exporting st_conv_inception_4_fast')
+    # model = st_conv_inception_4_fast(input_shape=input_shape, nb_res_layer=4)
+    # export_model(model, results_dir + '/st_conv_inception_4_fast')
+    # plot_model(model, results_dir + '/st_conv_inception_4_fast/model.png', True)
 
-    if K.image_dim_ordering() == 'th':
-        input_shape = (3, 600/4, 600/4)
-    else:
-        input_shape = (600/4, 600/4, 3)
-    model = st_conv_inception_4_superresolution(input_shape=input_shape, nb_res_layer=2)
-    export_model(model, results_dir + '/st_conv_inception_4_superresolution')
-    plot_model(model, results_dir + '/st_conv_inception_4_superresolution/model.png', True)
+    print('exporting fast_st_ps')
+    model = fast_st_ps(input_shape=input_shape, nb_res_layer=4)
+    export_model(model, results_dir + '/fast_st_ps')
+    plot_model(model, results_dir + '/fast_st_ps/model.png', True)
+
+    # print('exporting st_conv_inception_4_superresolution')
+    # if K.image_dim_ordering() == 'th':
+    #     input_shape = (3, int(600/4), int(600/4))
+    # else:
+    #     input_shape = (int(600/4), int(600/4), 3)
+    # model = st_conv_inception_4_superresolution(input_shape=input_shape, nb_res_layer=2)
+    # export_model(model, results_dir + '/st_conv_inception_4_superresolution')
+    # plot_model(model, results_dir + '/st_conv_inception_4_superresolution/model.png', True)

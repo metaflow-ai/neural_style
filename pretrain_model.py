@@ -6,7 +6,7 @@ from keras.optimizers import Adam
 
 from models.style_transfer import (st_convt, st_conv_inception, st_convt_inception_prelu,
                         st_conv_inception_4, st_conv_inception_4_fast,
-                        st_conv_inception_4_superresolution)
+                        st_conv_inception_4_superresolution, fast_st_ps)
 
 from utils.imutils import plot_losses, load_images, load_data, resize
 from utils.general import export_model
@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(
                 'the content of an image and the style of another.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument('--model', default='inception', type=str, choices=['transpose', 'inception', 'inception_prelu', 'inception_4', 'inception_4_fast', 'superresolution'], help='Load pretrained weights')
+parser.add_argument('--model', default='inception', type=str, choices=['transpose', 'inception', 'inception_prelu', 'inception_4', 'inception_4_fast', 'fast_st_ps', 'superresolution'], help='Load pretrained weights')
 parser.add_argument('--training_mode', default='identity', type=str, choices=['identity', 'overfit'], help='Load pretrained weights')
 parser.add_argument('--weights', default='', type=str, help='Load pretrained weights')
 parser.add_argument('--batch_size', default=4, type=int, help='batch size.')
@@ -79,6 +79,8 @@ elif args.model == 'inception_4':
     st_model = st_conv_inception_4(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'inception_4_fast':
     st_model = st_conv_inception_4_fast(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
+elif args.model == 'fast_st_ps':
+    st_model = fast_st_ps(input_shape, mode=2, nb_res_layer=args.nb_res_layer)
 elif args.model == 'superresolution':
     X = resize(X, (height/4, width/4))
     X_cv = resize(X_cv, (height/4, width/4))
@@ -94,7 +96,7 @@ print('Compiling model')
 adam = Adam(lr=args.lr, clipnorm=5.) # Clipping the norm avoid gradient explosion, no needs to suffocate it
 st_model.compile(adam, loss='mse') # loss=frobenius_error (this is not giving the same loss)
 
-print('Training model')
+print('Training model fr %d epochs' % args.nb_epoch)
 history = st_model.fit(X, y, batch_size=args.batch_size, nb_epoch=args.nb_epoch, verbose=1, validation_data=(X_cv, y_cv))
 losses = history.history
 
