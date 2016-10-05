@@ -8,13 +8,13 @@ sys.path.append(dir + '/../..')
 from keras import backend as K
 if K._BACKEND == 'tensorflow':
     import tensorflow as tf
-    import freeze_graph as freeze_tools
+    import utils.freeze_graph as freeze_tools
     
 from keras.models import model_from_json
 from keras.utils.np_utils import convert_kernel
 from vgg19.model_headless import get_layer_data
 
-from imutils import load_image, get_image_list, preprocess
+from utils.imutils import load_image, get_image_list, preprocess
 
 dir = os.path.dirname(os.path.realpath(__file__))
 

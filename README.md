@@ -59,7 +59,7 @@ nvidia-docker run -it -d -p 6006:6006 -v /my/aboslute/path/to/deepback:/root/dee
 
 **Fourth:** Pretrain models
 
-*If you only want to initiliase a model weights, you can do it by setting the --nb_epoch parameter to 0 manually*
+*If you only want to initialise a model weights, you can do it by setting the --nb_epoch parameter to 0 manually*
 ```bash
 # From root directory
 ./pretrain_model.sh
