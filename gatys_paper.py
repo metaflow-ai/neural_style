@@ -34,6 +34,9 @@ parser.add_argument('--input_type', default='content', type=str, choices=['rando
 parser.add_argument('--print_inter_img', default=False, type=bool, help='Print intermediate images')
 parser.add_argument('--output_dir', default=dataDir + '/output/vgg19/gatys_%s' % int(time.time()), type=str, help='optional output dir')
 parser.add_argument('--no_dump_losses', default=False, type=bool, help='Dump a graph of the losses')
+parser.add_argument('--alpha', default=0, type=float, help='Style coefficient')
+parser.add_argument('--beta', default=0, type=float, help='Content coefficient')
+parser.add_argument('--gamma', default=0, type=float, help='total variation coefficient')
 args = parser.parse_args()
 
 output_dir = args.output_dir
@@ -108,6 +111,12 @@ config = {
     'content_layers': content_layers,
     'learning_rate': 5e-1
 }
+random_search = True
+if args.alpha != 0 and args.beta != 0 and args.gamma != 0:
+    random_search = False
+    config['alpha'] = args.alpha
+    config['beta'] = args.beta
+    config['gamma'] = args.gamma
 with open(output_dir + '/config.json', 'w') as outfile:
     json.dump(config, outfile)  
 
@@ -129,11 +138,20 @@ for file_idx in range(len(X_train)):
         print('Compiling VGG headless 5 for ' + lc_name + ' content reconstruction')
         # Those hyper parameters are selected thx to pre_analysis scripts
         # Made for avg pooling + content init
-        for i in range(10):
+        if random_search is True:
+            range_size = 10
+        else:
+            range_size = 1 # no search
+        for i in range(range_size):
             # Random search
-            alpha = np.random.uniform(1, 1e2)
-            beta = 1e0
-            gamma = np.random.uniform(1e-6, 1e-4)
+            if range_size == 1:
+                alpha = args.alpha
+                beta = args.beta
+                gamma = args.gamma
+            else:
+                alpha = np.random.uniform(1, 1e2)
+                beta = 1e0
+                gamma = np.random.uniform(1e-6, 1e-4)
             print("alpha, beta, gamma:", alpha, beta, gamma)
 
             print('Computing train loss')
