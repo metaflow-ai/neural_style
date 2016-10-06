@@ -96,7 +96,7 @@ print('Compiling model')
 adam = Adam(lr=args.lr, clipnorm=5.) # Clipping the norm avoid gradient explosion, no needs to suffocate it
 st_model.compile(adam, loss='mse') # loss=frobenius_error (this is not giving the same loss)
 
-print('Training model fr %d epochs' % args.nb_epoch)
+print('Training model for %d epochs' % args.nb_epoch)
 history = st_model.fit(X, y, batch_size=args.batch_size, nb_epoch=args.nb_epoch, verbose=1, validation_data=(X_cv, y_cv))
 losses = history.history
 

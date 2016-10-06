@@ -1,7 +1,7 @@
 if [ $1  ]; then
   MODEL=$1
 else
-  MODEL='inception'
+  MODEL='fast_st_ps'
 fi
 
 for i in $(seq 0 6);
