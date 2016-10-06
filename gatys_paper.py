@@ -98,9 +98,6 @@ for idx, y_style in enumerate(y_styles):
 reg_TV = total_variation_error(input_layer, 2)
 
 # Random sampling is seems to produce good results when iterating over hyperparameters
-alphas = np.random.uniform(1, 1e2, 10)
-betas = [1e0]
-gammas = np.random.uniform(1e-6, 1e-4 ,10)
 config = {
     'style': args.style,
     'pooling_type': args.pooling_type,
@@ -109,9 +106,6 @@ config = {
     'optimizer': optimizer,
     'style_layers': style_layers,
     'content_layers': content_layers,
-    'alpha': alphas,
-    'beta': betas,
-    'gamma': gammas,    
     'learning_rate': 5e-1
 }
 with open(output_dir + '/config.json', 'w') as outfile:
@@ -135,48 +129,50 @@ for file_idx in range(len(X_train)):
         print('Compiling VGG headless 5 for ' + lc_name + ' content reconstruction')
         # Those hyper parameters are selected thx to pre_analysis scripts
         # Made for avg pooling + content init
-        for alpha in alphas:
-            for beta in betas:
-                for gamma in gammas:
-                    print("alpha, beta, gamma:", alpha, beta, gamma)
+        for i in range(10):
+            # Random search
+            alpha = np.random.uniform(1, 1e2)
+            beta = 1e0
+            gamma = np.random.uniform(1e-6, 1e-4)
+            print("alpha, beta, gamma:", alpha, beta, gamma)
 
-                    print('Computing train loss')
-                    tls = [alpha * train_loss_style / len(train_loss_styles) for style_idx, train_loss_style in enumerate(train_loss_styles)]
-                    tlc = beta * train_content_loss
-                    rtv = gamma * reg_TV
-                    train_loss =  sum(tls) + tlc + rtv
+            print('Computing train loss')
+            tls = [alpha * train_loss_style / len(train_loss_styles) for style_idx, train_loss_style in enumerate(train_loss_styles)]
+            tlc = beta * train_content_loss
+            rtv = gamma * reg_TV
+            train_loss =  sum(tls) + tlc + rtv
 
-                    print('Computing gradients')
-                    grads = K.gradients(train_loss, input_layer)
-                    if optimizer == 'adam':
-                        grads = norm_l2(grads)
-                    inputs = [input_layer]
-                    outputs = [train_loss, grads, tlc] + tls
+            print('Computing gradients')
+            grads = K.gradients(train_loss, input_layer)
+            if optimizer == 'adam':
+                grads = norm_l2(grads)
+            inputs = [input_layer]
+            outputs = [train_loss, grads, tlc] + tls
 
-                    print('Computing iteratee function')
-                    train_iteratee = K.function(inputs, outputs)
-                    filename_array = image_list[file_idx].split('/')[-1].split('.')
+            print('Computing iteratee function')
+            train_iteratee = K.function(inputs, outputs)
+            filename_array = image_list[file_idx].split('/')[-1].split('.')
 
-                    suffix = "_content%s_alpha%f_beta%f_gamma%f" % (lc_name, alpha, beta, gamma)
-                    out_filename = filename_array[0] + suffix + '.' + filename_array[1]
-                    def lambda_dump_input(obj):
-                        current_iter = obj['current_iter']
-                        input_data = obj['input_data']
-                        if current_iter % 25 == 0 and args.print_inter_img == True:
-                            save_image(output_dir + '/' + filename_array[0] + suffix + + '_' + str(current_iter.zfill(5)) + '.' + filename_array[1], input_data[0], deprocess_type='vgg19')
+            suffix = "_content%s_alpha%f_beta%f_gamma%f" % (lc_name, alpha, beta, gamma)
+            out_filename = filename_array[0] + suffix + '.' + filename_array[1]
+            def lambda_dump_input(obj):
+                current_iter = obj['current_iter']
+                input_data = obj['input_data']
+                if current_iter % 25 == 0 and args.print_inter_img == True:
+                    save_image(output_dir + '/' + filename_array[0] + suffix + + '_' + str(current_iter.zfill(5)) + '.' + filename_array[1], input_data[0], deprocess_type='vgg19')
 
-                    best_input_data, losses = train_input(
-                        input_data, 
-                        train_iteratee, 
-                        optimizer, 
-                        {'learning_rate': config['learning_rate']}, 
-                        max_iter=args.max_iter,
-                        callbacks=[lambda_dump_input]
-                    )
+            best_input_data, losses = train_input(
+                input_data, 
+                train_iteratee, 
+                optimizer, 
+                {'learning_rate': config['learning_rate']}, 
+                max_iter=args.max_iter,
+                callbacks=[lambda_dump_input]
+            )
 
-                    print('Dumping data')
-                    save_image(output_dir + '/' + out_filename, best_input_data[0], deprocess_type='vgg19')
-                    if args.no_dump_losses == False:
-                        plot_losses(losses, output_dir, filename_array[0], suffix)
+            print('Dumping data')
+            save_image(output_dir + '/' + out_filename, best_input_data[0], deprocess_type='vgg19')
+            if args.no_dump_losses == False:
+                plot_losses(losses, output_dir, filename_array[0], suffix)
 
-                    current_iter += 1
+            current_iter += 1

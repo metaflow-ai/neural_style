@@ -42,7 +42,7 @@ nvidia-docker run -it -d -p 6006:6006 -v /my/aboslute/path/to/deepback:/root/dee
 **First:** Download data! (Be aware, this will download around 20GB of data...)
 ```bash
 # From data directory
-./data/download_images.sh
+./download_images.sh
 ```
 
 **Second:** Download the VGG19 and preprocess it!
@@ -54,7 +54,7 @@ nvidia-docker run -it -d -p 6006:6006 -v /my/aboslute/path/to/deepback:/root/dee
 **Third:** Build some overfit data to pretrain some models! (You can control how many overfit images you want)
 ```bash
 # From root directory
-./data/build_ovefit_folder.sh
+./data/build_overfit_folder.sh
 ```
 
 **Fourth:** Pretrain models
