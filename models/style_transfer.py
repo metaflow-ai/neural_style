@@ -16,11 +16,12 @@ from models.layers.ConvolutionTranspose2D import ConvolutionTranspose2D
 from models.layers.ScaledSigmoid import ScaledSigmoid
 from models.layers.PhaseShift import PhaseShift
 from models.layers.InstanceNormalization import InstanceNormalization
+from models.layers.ReflectPadding2D import ReflectPadding2D
 
 from utils.general import export_model
 
 # inputs th ordering, BGR
-def st_convt(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+def st_convt(input_shape, weights_path=None, mode=0, nb_res_layer=5):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -78,7 +79,7 @@ def st_convt(input_shape, weights_path=None, mode=0, nb_res_layer=4):
     return model
 
 # Moving from 4 to 12 layers doesn't seem to improve much
-def st_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+def st_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=5):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -130,7 +131,7 @@ def st_conv_inception(input_shape, weights_path=None, mode=0, nb_res_layer=4):
 
     return model
 
-def st_convt_inception_prelu(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+def st_convt_inception_prelu(input_shape, weights_path=None, mode=0, nb_res_layer=5):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -183,7 +184,7 @@ def st_convt_inception_prelu(input_shape, weights_path=None, mode=0, nb_res_laye
     return model
 
 
-def st_conv_inception_4(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+def st_conv_inception_4(input_shape, weights_path=None, mode=0, nb_res_layer=5):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -226,7 +227,7 @@ def st_conv_inception_4(input_shape, weights_path=None, mode=0, nb_res_layer=4):
 
     return model
 
-def st_conv_inception_4_superresolution(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+def st_conv_inception_4_superresolution(input_shape, weights_path=None, mode=0, nb_res_layer=5):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -255,7 +256,7 @@ def st_conv_inception_4_superresolution(input_shape, weights_path=None, mode=0, 
 
     return model
 
-def st_conv_inception_4_fast(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+def st_conv_inception_4_fast(input_shape, weights_path=None, mode=0, nb_res_layer=5):
     if K.image_dim_ordering() == 'tf':
         channel_axis = 3
     else:
@@ -413,40 +414,46 @@ def inception_layer_fast(input, do, channel_axis, batchnorm_mode, nb_layers):
 
     return m
 
-def fast_st_ps(input_shape, weights_path=None, mode=0, nb_res_layer=4):
+def fast_st_ps(input_shape, weights_path=None, mode=0, nb_res_layer=5):
     input = Input(shape=input_shape, name='input_node', dtype=K.floatx())
     # Downsampling
+    p11 = ReflectPadding2D(padding=(1, 1), dim_ordering=K.image_dim_ordering())(input)
     c11 = Convolution2D(32, 3, 3, dim_ordering=K.image_dim_ordering(), 
-        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(input)
+        init='he_normal', subsample=(1, 1), border_mode='valid', activation='linear')(p11)
     bn11 = InstanceNormalization('inorm-1')(c11)
     a11 = Activation('relu')(bn11)
 
+    p12 = ReflectPadding2D(padding=(1, 1), dim_ordering=K.image_dim_ordering())(a11)
     c12 = Convolution2D(64, 3, 3, dim_ordering=K.image_dim_ordering(), 
-        init='he_normal', subsample=(2, 2),  border_mode='same', activation='linear')(a11)
+        init='he_normal', subsample=(2, 2),  border_mode='valid', activation='linear')(p12)
     bn12 = InstanceNormalization('inorm-2')(c12)
     a12 = Activation('relu')(bn12)
 
+    p13 = ReflectPadding2D(padding=(1, 1), dim_ordering=K.image_dim_ordering())(a12)
     c13 = Convolution2D(128, 3, 3, dim_ordering=K.image_dim_ordering(), 
-        init='he_normal', subsample=(2, 2), border_mode='same', activation='linear')(a12)
+        init='he_normal', subsample=(2, 2), border_mode='valid', activation='linear')(p13)
     bn13 = InstanceNormalization('inorm-3')(c13)
     last_out = Activation('relu')(bn13)
 
     for i in range(nb_res_layer):
+        p = ReflectPadding2D(padding=(1, 1), dim_ordering=K.image_dim_ordering())(last_out)
         c = Convolution2D(128, 3, 3, dim_ordering=K.image_dim_ordering(), 
-            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(last_out)
+            init='he_normal', subsample=(1, 1), border_mode='valid', activation='linear')(p)
         bn = InstanceNormalization('inorm-res-%d' % i)(c)
         a = Activation('relu')(bn)
+        p = ReflectPadding2D(padding=(1, 1), dim_ordering=K.image_dim_ordering())(a)
         c = Convolution2D(128, 3, 3, dim_ordering=K.image_dim_ordering(), 
-            init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(a)
+            init='he_normal', subsample=(1, 1), border_mode='valid', activation='linear')(p)
         bn = InstanceNormalization('inorm-5-%d' % i)(c)
         # a = Activation('relu')(bn)
         last_out = merge([last_out, bn], mode='sum')
         # last_out = a
 
+    p = ReflectPadding2D(padding=(1, 1), dim_ordering=K.image_dim_ordering())(last_out)
     ct71 = Convolution2D(48, 3, 3, dim_ordering=K.image_dim_ordering(), 
-        init='he_normal', subsample=(1, 1), border_mode='same', activation='linear')(last_out)
+        init='he_normal', subsample=(1, 1), border_mode='valid', activation='linear')(p)
     out = PhaseShift(ratio=4, color=True)(ct71)
-    out = ScaledSigmoid(scaling=255., name="output_node")(out)    
+    # out = ScaledSigmoid(scaling=255., name="output_node")(out)
 
     
     model = Model(input=[input], output=[out])
@@ -493,12 +500,12 @@ if __name__ == "__main__":
     # plot_model(model, results_dir + '/st_conv_inception_4/model.png', True)
 
     # print('exporting st_conv_inception_4_fast')
-    # model = st_conv_inception_4_fast(input_shape=input_shape, nb_res_layer=4)
+    # model = st_conv_inception_4_fast(input_shape=input_shape, nb_res_layer=5)
     # export_model(model, results_dir + '/st_conv_inception_4_fast')
     # plot_model(model, results_dir + '/st_conv_inception_4_fast/model.png', True)
 
     print('exporting fast_st_ps')
-    model = fast_st_ps(input_shape=input_shape, nb_res_layer=4)
+    model = fast_st_ps(input_shape=input_shape, nb_res_layer=5)
     export_model(model, results_dir + '/fast_st_ps')
     plot_model(model, results_dir + '/fast_st_ps/model.png', True)
 

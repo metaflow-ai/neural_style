@@ -3,6 +3,7 @@ from .ATrousConvolution2D import ATrousConvolution2D
 from .ScaledSigmoid import ScaledSigmoid
 from .PhaseShift import PhaseShift
 from .InstanceNormalization import InstanceNormalization
+from .ReflectPadding2D import ReflectPadding2D
 
 custom_objects={
     'ATrousConvolution2D': ATrousConvolution2D,
@@ -10,4 +11,5 @@ custom_objects={
     'ScaledSigmoid': ScaledSigmoid,
     'PhaseShift': PhaseShift,
     'InstanceNormalization': InstanceNormalization,
+    'ReflectPadding2D': ReflectPadding2D,
 }

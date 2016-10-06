@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import os, argparse
+import os, argparse, time
 
 from keras import backend as K
 
@@ -14,10 +14,6 @@ else:
     K.set_image_dim_ordering('th')
     
 dir = os.path.dirname(os.path.realpath(__file__))
-dataDir = dir + '/data'
-output_dir = dataDir + '/output'
-overfit_dir = dataDir + '/overfit'    
-test_dir = dataDir + '/test'
 
 parser = argparse.ArgumentParser(
     description='Neural artistic style. Generates an image by combining '
@@ -28,6 +24,11 @@ parser.add_argument('--models_dir', default=dir + '/models/data/st', type=str, h
 parser.add_argument('--batch_size', default=20, type=int, help='batch size.')
 parser.add_argument('--image_size', default=600, type=int, help='Input image size.')
 args = parser.parse_args()
+
+dataDir = dir + '/data'
+output_dir = dataDir + '/output'
+overfit_dir = dataDir + '/overfit_' + args.image_size    
+test_dir = dataDir + '/test'
 
 dim_ordering = K.image_dim_ordering()
 channels = 3
@@ -52,8 +53,11 @@ for absolute_model_dir in subdirs:
                     should_convert=False, custom_objects=custom_objects)
 
     print('Predicting')
+    start = time.clock()
     results = st_model.predict(X_test) # Equivalent to predict([X_test, False])
     results_overfit = st_model.predict(X_overfit) # Equivalent to predict([X_test, False])
+    end = time.clock()
+    duration_batch = (end-start)/(X_test.shape[0] * X_overfit.shape[0])
 
     print('Dumping results')
     tmp_output_dir = output_dir + '/' + absolute_model_dir.split('/')[-2] + '/' + absolute_model_dir.split('/')[-1]
