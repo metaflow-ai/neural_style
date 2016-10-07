@@ -17,14 +17,14 @@ class PhaseShift(Layer):
 
     def _phase_shift(self, I, r):
         bsize, a, b, c = I.get_shape().as_list()
-        bsize = tf.shape(I)[0] # I've made a minor change to the original implementation to enable Dimension(None) for the batch dim
+        bsize = tf.shape(I)[0]
         X = tf.reshape(I, (bsize, a, b, r, r))
         X = tf.transpose(X, (0, 1, 2, 4, 3))  # bsize, a, b, 1, 1
         X = tf.split(1, a, X)  # a, [bsize, b, r, r]
         X = tf.concat(2, [tf.squeeze(x) for x in X])  # bsize, b, a*r, r
         X = tf.split(1, b, X)  # b, [bsize, a*r, r]
         X = tf.concat(2, [tf.squeeze(x) for x in X])  # bsize, a*r, b*r
-        return tf.reshape(X, (bsize, a*r, b*r, 1))
+        return tf.reshape(X, (bsize, a*r, b*r, c // (r*r)))
 
     def call(self, X, mask=None):
         if self.color:

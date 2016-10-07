@@ -8,11 +8,10 @@ else:
 
 
 class ReflectPadding2D(Layer):
-    def __init__(self, padding=(1, 1), dim_ordering=K.image_dim_ordering(), **kwargs):
+    def __init__(self, padding=(1, 1), **kwargs):
         super(ReflectPadding2D, self).__init__(**kwargs)
         self.padding = tuple(padding)
-        assert dim_ordering in {'tf', 'th'}, 'dim_ordering must be in {tf, th}'
-        self.dim_ordering = dim_ordering
+        self.dim_ordering = K.image_dim_ordering()
         self.input_spec = [InputSpec(ndim=4)]
 
     def get_output_shape_for(self, input_shape):
