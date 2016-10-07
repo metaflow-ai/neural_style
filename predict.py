@@ -27,7 +27,7 @@ args = parser.parse_args()
 
 dataDir = dir + '/data'
 output_dir = dataDir + '/output'
-overfit_dir = dataDir + '/overfit_' + args.image_size    
+overfit_dir = dataDir + '/overfit_' + str(args.image_size)
 test_dir = dataDir + '/test'
 
 dim_ordering = K.image_dim_ordering()
