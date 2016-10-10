@@ -14,7 +14,6 @@ class PhaseShift(Layer):
 
         super(PhaseShift, self).__init__(**kwargs)
 
-
     def _phase_shift(self, I, r):
         bsize, a, b, c = I.get_shape().as_list()
         bsize = tf.shape(I)[0]
@@ -24,14 +23,16 @@ class PhaseShift(Layer):
         X = tf.concat(2, [tf.squeeze(x) for x in X])  # bsize, b, a*r, r
         X = tf.split(1, b, X)  # b, [bsize, a*r, r]
         X = tf.concat(2, [tf.squeeze(x) for x in X])  # bsize, a*r, b*r
-        return tf.reshape(X, (bsize, a*r, b*r, c // (r*r)))
+        return tf.reshape(X, (bsize, a*r, b*r, 1))
 
     def call(self, X, mask=None):
-        if self.color:
-            Xc = tf.split(3, 3, X)
-            Y = tf.concat(3, [self._phase_shift(x, self.ratio) for x in Xc])
-        else:
-            Y = self._phase_shift(X, self.ratio)
+        total_channels = X.get_shape()[3]
+        if total_channels % (self.ratio * self.ratio) != 0:
+            raise ValueError('total_channels % (self.ratio * self.ratio) must equal to 0')
+
+        nb_output_channels = total_channels // (self.ratio * self.ratio)
+        Xc = tf.split(3, nb_output_channels, X)
+        Y = tf.concat(3, [self._phase_shift(x, self.ratio) for x in Xc])
 
         return Y
 
